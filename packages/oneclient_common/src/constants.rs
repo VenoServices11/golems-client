@@ -1,8 +1,7 @@
 pub const DUMMY_REPLACE_NEWLINE: &str = "\n";
 
-/// Golem's Client's own Azure app registration (personal Microsoft accounts).
-/// Placeholder until the app is registered; Microsoft sign-in fails until it is filled in.
-pub const MICROSOFT_CLIENT_ID: &str = "00000000-0000-0000-0000-000000000000";
+/// Golem's Client's own Azure app registration (personal Microsoft accounts)
+pub const MICROSOFT_CLIENT_ID: &str = "a783668c-37a5-4a71-80ad-4006674966d1";
 pub const MINECRAFT_SCOPES: &str = "XboxLive.SignIn XboxLive.offline_access";
 /// Empty until Golem's Client has its own CurseForge key; CurseForge is hidden while it is.
 pub const CURSEFORGE_API_KEY: &str = "";
