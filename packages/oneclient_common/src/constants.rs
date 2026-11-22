@@ -5,8 +5,8 @@ pub const MICROSOFT_CLIENT_ID: &str = "a783668c-37a5-4a71-80ad-4006674966d1";
 pub const MINECRAFT_SCOPES: &str = "XboxLive.SignIn XboxLive.offline_access";
 /// Empty until Golem's Client has its own CurseForge key; CurseForge is hidden while it is.
 pub const CURSEFORGE_API_KEY: &str = "";
-/// Golem's Client's Discord application. Empty until it is made; Rich Presence stays off while it is.
-pub const DISCORD_CLIENT_ID: &str = "";
+/// Golem's Client's Discord application (Rich Presence)
+pub const DISCORD_CLIENT_ID: &str = "1573996158890803301";
 
 pub const MODRINTH_API_URL: &str = "https://api.modrinth.com";
 pub const MODRINTH_CDN_PREFIX: &str = "https://cdn.modrinth.com/data/";
