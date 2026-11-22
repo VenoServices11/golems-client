@@ -1,10 +1,14 @@
 name: Mirror launcher data
 
-# Run by hand. Makes our own copy of the launcher's data files (version list and art, the mod bundles,
+# Runs by hand, or when this file or the script changes. Makes our own copy of the launcher's data files (version list and art, the mod bundles,
 # bad-mod lists) on the `data` branch, which the launcher reads from raw.githubusercontent.com.
 # After the first copy, the files there are ours to edit: change the bundles on the `data` branch.
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/mirror-data.yml
+      - .github/scripts/mirror_data.py
 
 permissions:
   contents: write
@@ -14,15 +18,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Stop if the data branch already exists
+      - name: Check the data branch
+        id: check
         run: |
           if git ls-remote --exit-code --heads origin data >/dev/null; then
-            echo "::error::The data branch already exists. This only makes the first copy, so it never overwrites edits."
-            exit 1
+            echo "::notice::The data branch already exists. This only makes the first copy, so it never overwrites edits."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Download
+        if: steps.check.outputs.exists != 'true'
         run: python3 .github/scripts/mirror_data.py "$RUNNER_TEMP/data"
       - name: Publish to the data branch
+        if: steps.check.outputs.exists != 'true'
         run: |
           cd "$RUNNER_TEMP/data"
           git init -q -b data
