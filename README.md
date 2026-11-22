@@ -20,10 +20,8 @@ Windows only for now. Download `Golem's Client_..._x64-setup.exe` from the
 ## Privacy
 
 Golem's Client sends no telemetry, analytics or crash reports. It talks to Microsoft, Xbox and Mojang to
-sign you in and download the game, to Modrinth for mods, to Polyfrost's public metadata server
-(`meta.polyfrost.org`) for game and loader version files, and to this GitHub repository for the
-launcher's own data (version list, mod bundles) and updates. Nothing is sent to Polyfrost's other
-services (Poly+, Sentry, telemetry): they are blocked in the launcher.
+sign you in and download the game, to Modrinth for mods, and to this GitHub repository for the
+launcher's own data (version list, mod bundles) and updates. 
 
 ## Building
 
@@ -33,14 +31,3 @@ builds from `main` are published to the `latest` release. Locally: `cargo build 
 
 The launcher's data files live on the `data` branch. The "Mirror launcher data" workflow made the
 first copy of them; edit them there.
-
-## Credits and licence
-
-Golem's Client is based on [OneClient / OneLauncher](https://github.com/Polyfrost/OneLauncher) by
-Polyfrost and contributors, and is licensed the same way, under the GNU General Public License v3.0
-only (see [LICENSE](./LICENSE) and [ATTRIBUTION.md](./ATTRIBUTION.md)). It is not made by or
-affiliated with Polyfrost, and it doesn't use Polyfrost's branding.
-
-Changes from OneClient, made by veno15 starting November 2026: the Golem's Client name, logo, colours
-and fonts; links; Polyfrost's online services, crash reporting, terms and translations removed;
-CurseForge hidden; Windows and Minecraft 1.21.11 only; the launcher's data served from this repository.
