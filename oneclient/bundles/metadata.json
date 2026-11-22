@@ -1,0 +1,24 @@
+{
+  "versions": {
+    "1.21.11": {
+      "fabric": [
+        {
+          "path": "/oneclient/bundles/generated/hud-1.21.11-fabric.mrpack",
+          "sha1": "202df010100247caadc81c5116c71274711424fa"
+        },
+        {
+          "path": "/oneclient/bundles/generated/performance-1.21.11-fabric.mrpack",
+          "sha1": "2d6289494f4c960016c73330f3c6f2b9c127bb74"
+        },
+        {
+          "path": "/oneclient/bundles/generated/qol-1.21.11-fabric.mrpack",
+          "sha1": "7cde95e4888a5413514978b856dd255241a23d27"
+        },
+        {
+          "path": "/oneclient/bundles/generated/utility-1.21.11-fabric.mrpack",
+          "sha1": "432a09c214323bb0297ba4addd25faf1d7e062f7"
+        }
+      ]
+    }
+  }
+}
