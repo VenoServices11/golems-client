@@ -30,7 +30,3 @@ builds from `main` are published to the `latest` release. Locally: `cargo build 
 (Rust 1.97 or newer), then `cargo packager --release --formats nsis` from `packages/golems_app`.
 
 The launcher's data files live on the `data` branch: edit them there.
-
-## Licence
-
-GNU General Public License v3.0 only. See [LICENSE](./LICENSE) and [ATTRIBUTION.md](./ATTRIBUTION.md).
