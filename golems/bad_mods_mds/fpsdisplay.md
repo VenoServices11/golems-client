@@ -1,0 +1,3 @@
+# FPS - Display
+
+Golem's Client already ships EvergreenHUD, which has an FPS HUD. YOU DO NOT NEED THIS MOD IF YOU HAVE EVERGREENHUD, AND IT WILL INTEGRATE IN GOLEM'S CLIENT DIRECTLY.

@@ -1,0 +1,24 @@
+{
+  "versions": {
+    "1.21.11": {
+      "fabric": [
+        {
+          "path": "/golems/bundles/generated/hud-1.21.11-fabric.mrpack",
+          "sha1": "ef889dabd589c1fdabe3844ae50e73e235eb598a"
+        },
+        {
+          "path": "/golems/bundles/generated/performance-1.21.11-fabric.mrpack",
+          "sha1": "e05d5dc875b2485a2ee8b572a2ff0368b92cc692"
+        },
+        {
+          "path": "/golems/bundles/generated/qol-1.21.11-fabric.mrpack",
+          "sha1": "997eb2401b0a977e63862be5850d48b16d21d20b"
+        },
+        {
+          "path": "/golems/bundles/generated/utility-1.21.11-fabric.mrpack",
+          "sha1": "357d72ee8be27a7d7fbd45ad3c54de5a9f850d27"
+        }
+      ]
+    }
+  }
+}

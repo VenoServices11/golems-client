@@ -1,0 +1,347 @@
+{
+    "bad-mods": [
+        {
+            "project-ids": {
+                "modrinth": "aC3cM3Vq",
+                "curseforge": "60089"
+            },
+            "name": "Mouse Tweaks",
+            "author": "YaLTeR",
+            "explanation": "/golems/bad_mods_mds/mouse-tweaks.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "51shyZVL",
+                "curseforge": "630104"
+            },
+            "name": "More Culling",
+            "author": "FX",
+            "explanation": "/golems/bad_mods_mds/moreculling.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "geGZinIB",
+                "curseforge": "1570586"
+            },
+            "name": "Combat Hitboxes",
+            "author": "sootysplash",
+            "explanation": "/golems/bad_mods_mds/combat-hitboxes.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "Mptc0jo6"
+                    }
+                }
+            ]
+        },
+        {
+            "project-ids": {
+                "modrinth": "9mtu0sUO",
+                "curseforge": "904356"
+            },
+            "name": "Fast IP Ping",
+            "author": "fallen-breath",
+            "explanation": "/golems/bad_mods_mds/fast-ip-ping.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "5eVpQJSP"
+                    }
+                }
+            ]
+        },
+        {
+            "project-ids": {
+                "modrinth": "Wb5oqrBJ",
+                "curseforge": "407206"
+            },
+            "name": "Chat Heads",
+            "author": "dzwdz",
+            "explanation": "/golems/bad_mods_mds/chat-heads.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "8pJYUDNi"
+                    }
+                }
+            ]
+        },
+        {
+            "project-ids": {
+                "modrinth": "Kp2uclYl",
+                "curseforge": "357540"
+            },
+            "name": "Inventory HUD+",
+            "author": "dmitrylovin",
+            "explanation": "/golems/bad_mods_mds/inventory-hud.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "1yIQcc2b"
+                    }
+                }
+            ]
+        },
+        {
+            "project-ids": {
+                "modrinth": "ONZm0H7Y",
+                "curseforge": "1434533"
+            },
+            "name": "Better Block Entities",
+            "author": "cseden",
+            "explanation": "/golems/bad_mods_mds/better-block-entities.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "AtOSAunf"
+                    }
+                }
+            ]
+        },
+        {
+            "project-ids": {
+                "modrinth": "8qkXwOnk",
+                "curseforge": "518319"
+            },
+            "name": "More Chat History",
+            "author": "JackFred",
+            "explanation": "/golems/bad_mods_mds/morechathistory.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "8LNT47ZH"
+                    }
+                }
+            ]
+        },
+        {
+            "project-ids": {
+                "modrinth": "DIlqwRFH",
+                "curseforge": "440228"
+            },
+            "name": "FPS - Display",
+            "author": "Grayray75",
+            "explanation": "/golems/bad_mods_mds/fpsdisplay.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "1yIQcc2b"
+                    }
+                }
+            ]
+        },
+        {
+            "project-ids": {
+                "modrinth": "DnNYdJsx",
+                "curseforge": "892086"
+            },
+            "name": "Chat Animation [Smooth Chat]",
+            "author": "Ezzenix",
+            "explanation": "/golems/bad_mods_mds/chatanimation.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "8pJYUDNi"
+                    }
+                }
+            ]
+        },
+        {
+            "project-ids": {
+                "modrinth": "MS1ZMyR7",
+                "curseforge": "406343"
+            },
+            "name": "Better Ping Display [Fabric]",
+            "author": "vladmarica",
+            "explanation": "/golems/bad_mods_mds/better-ping-display.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "pWXJaKrX"
+                    }
+                }
+            ]
+        },
+        {
+            "project-ids": {
+                "modrinth": "lpiIRiAZ"
+            },
+            "name": "legacy-lwjgl3",
+            "author": "moehreag",
+            "explanation": "/golems/bad_mods_mds/legacy-lwjgl3.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "FCvC00y3"
+            },
+            "name": "Legacy OptiFabric",
+            "author": "tildejustin",
+            "explanation": "/golems/bad_mods_mds/optifabric.md"
+        },
+        {
+            "project-ids": {
+                "curseforge": "400308"
+            },
+            "name": "OptiLegacy",
+            "author": "hydo_s",
+            "explanation": "/golems/bad_mods_mds/optifabric.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "cHtd43CF"
+            },
+            "name": "Raw Mouse Input",
+            "author": "awruff",
+            "explanation": "/golems/bad_mods_mds/raw-input.md"
+        },
+        {
+            "project-ids": {
+                "curseforge": "388707"
+            },
+            "name": "Raw Input",
+            "author": "zkqri0",
+            "explanation": "/golems/bad_mods_mds/raw-input.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "ZP7xHXtw",
+                "curseforge": "833233"
+            },
+            "name": "Remove Reloading Screen (RRLS)",
+            "author": "dima_dencep",
+            "explanation": "/golems/bad_mods_mds/rrls.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "hbSfT032",
+                        "curseforge": "1740837"
+                    }
+                },
+                {
+                    "project-ids": {
+                        "modrinth": "blWBX5n1"
+                    }
+                }
+            ]
+        },
+        {
+            "project-ids": {
+                "modrinth": "JYQhtZtO",
+                "curseforge": "635429"
+            },
+            "name": "VulkanMod",
+            "author": "xCollateral",
+            "explanation": "/golems/bad_mods_mds/vulkanmod.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "hbSfT032",
+                        "curseforge": "1740837"
+                    }
+                }
+            ]
+        },
+        {
+            "hash": "0011dbc63720e3bb82559ee5125696bc7f33390c",
+            "name": "Alternate Current",
+            "author": "Space Walker",
+            "explanation": "/golems/bad_mods_mds/alternate-current.md"
+        },
+        {
+            "hash": "1214ed32b1e3705d9eee5ea6157ee72ae54d39f4",
+            "name": "Alternate Current",
+            "author": "Space Walker",
+            "explanation": "/golems/bad_mods_mds/alternate-current.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "hCyJxgEF"
+            },
+            "name": "netfix",
+            "author": "Lunasa",
+            "explanation": "/golems/bad_mods_mds/netfix-lomka.md"
+        },
+        {
+            "hash": "cff92a3512b31e2ec5928072426277d349b0e8d7",
+            "name": "Lomka",
+            "author": "Starlev",
+            "explanation": "/golems/bad_mods_mds/netfix-lomka.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "DynYZEae",
+                "curseforge": "681953"
+            },
+            "name": "Exordium",
+            "author": "tr7zw",
+            "explanation": "/golems/bad_mods_mds/exordium.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "KuNKN7d2",
+                "curseforge": "930207"
+            },
+            "name": "Noisium",
+            "author": "Steveplayers",
+            "explanation": "/golems/bad_mods_mds/noisium.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "hasdd01q",
+                "curseforge": "1357563"
+            },
+            "name": "NoisiumForked",
+            "author": "Coredex",
+            "explanation": "/golems/bad_mods_mds/noisium.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "LXJlc5WJ",
+                "curseforge": "657481"
+            },
+            "name": "Hold That Chunk",
+            "author": "dlee13 / The_TermiGator",
+            "explanation": "/golems/bad_mods_mds/hold-that-chunk.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "L4u8Yt14",
+                        "curseforge": "1340139"
+                    }
+                }
+            ]
+        },
+        {
+            "hash": "1840cb6fd0ddb8f23133d1067860ff02ca3f0ba0",
+            "name": "Cpvp Hud",
+            "author": "MeqxsDev",
+            "explanation": "/golems/bad_mods_mds/cpvp-hud.md"
+        },
+        {
+            "hash": "de4f5f6e5444a90f9b762a02d3233c227262be8a",
+            "name": "Simple Voice Chat Group Player Names",
+            "author": "hennyc",
+            "explanation": "/golems/bad_mods_mds/voicechat-names.md"
+        },
+        {
+            "project-ids": {
+                "modrinth": "aT8BzaOj"
+            },
+            "name": "ItemPhysic",
+            "author": "CreativeMD",
+            "explanation": "/golems/bad_mods_mds/itemphysic.md",
+            "alternatives": [
+                {
+                    "project-ids": {
+                        "modrinth": "OuyCgP8t"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Better X-Ray",
+            "author": "realrbn",
+            "explanation": "/golems/bad_mods_mds/betterxray.md"
+        }
+    ]
+}
