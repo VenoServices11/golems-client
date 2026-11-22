@@ -5,11 +5,7 @@ members = [
 resolver = "3"
 
 [workspace.package]
-authors = [
-  "veno15",
-  "Polyfrost (OneClient)",
-  "Polyfrost Contributors",
-]
+authors = ["veno15"]
 documentation = "https://github.com/VenoServices11/golems-client"
 edition = "2024"
 homepage = "https://github.com/VenoServices11/golems-client"
@@ -21,24 +17,25 @@ version = "1.0.0"
 
 [workspace.dependencies]
 # core
-oneclient_auth = {path = "./packages/oneclient_auth"}
-oneclient_cluster = {path = "./packages/oneclient_cluster"}
-oneclient_common = {path = "./packages/oneclient_common"}
-oneclient_content = {path = "./packages/oneclient_content"}
-oneclient_core = {path = "./packages/oneclient_core"}
-oneclient_db = {path = "./packages/oneclient_db"}
-oneclient_discord = {path = "./packages/oneclient_discord"}
-oneclient_events = {path = "./packages/oneclient_events"}
-oneclient_java = {path = "./packages/oneclient_java"}
-oneclient_macro = {path = "./packages/oneclient_macro"}
-oneclient_mc = {path = "./packages/oneclient_mc"}
-oneclient_net = {path = "./packages/oneclient_net"}
-oneclient_polyplus = {path = "./packages/oneclient_polyplus"}
-polyio = {path = "./packages/polyio"}
+golems_auth = {path = "./packages/golems_auth"}
+golems_cluster = {path = "./packages/golems_cluster"}
+golems_common = {path = "./packages/golems_common"}
+golems_content = {path = "./packages/golems_content"}
+golems_core = {path = "./packages/golems_core"}
+golems_db = {path = "./packages/golems_db"}
+golems_discord = {path = "./packages/golems_discord"}
+golems_events = {path = "./packages/golems_events"}
+golems_java = {path = "./packages/golems_java"}
+golems_macro = {path = "./packages/golems_macro"}
+golems_mc = {path = "./packages/golems_mc"}
+golems_net = {path = "./packages/golems_net"}
+golems_social = {path = "./packages/golems_social"}
+golems_io = {path = "./packages/golems_io"}
 
 # core (extra)
 discord-rich-presence = {version = "=1.1.0"}
-interfrost = {version = "=1.5.0"}
+# game/loader version metadata types (crates.io: interfrost)
+golems_meta = {package = "interfrost", version = "=1.5.0"}
 
 # logging
 sentry = {version = "=0.49.3", default-features = false, features = [
@@ -152,8 +149,9 @@ freya = {version = "0.5.0", features = ["engine", "winit", "router", "remote-ass
 freya-core = "0.5.0"
 freya-testing = "0.5.0"
 freya-winit = "0.5.0"
-freya-skia-safe = "=0.104.0" # draws the plusrenderer player model
-plusrenderer = {git = "https://github.com/Polyfrost/plusrenderer", rev = "914ddf8cae388126407d86925a05fa3db085ebbc"}
+freya-skia-safe = "=0.104.0" # draws the player model (golems_render)
+# 3D player model renderer for the wardrobe
+golems_render = {package = "plusrenderer", git = "https://github.com/Polyfrost/plusrenderer", rev = "914ddf8cae388126407d86925a05fa3db085ebbc"}
 image = {version = "=0.25.10", default-features = false, features = ["png", "jpeg", "ico"]}
 
 # Proc macros are dylibs rustc loads during the build, and stripping them with

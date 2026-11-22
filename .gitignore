@@ -1,6 +1,6 @@
 /target
 .DS_Store
 /.idea
-OneLauncher.iml
+golems-client.iml
 
-/packages/oneclient_app/icons/generated/
+/packages/golems_app/icons/generated/

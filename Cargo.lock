@@ -4638,7 +4638,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
-name = "oneclient_app"
+name = "golems_app"
 version = "2.11.0"
 dependencies = [
  "accesskit",
@@ -4660,22 +4660,22 @@ dependencies = [
  "inventory",
  "mimalloc",
  "notify",
- "oneclient_auth",
- "oneclient_cluster",
- "oneclient_common",
- "oneclient_content",
- "oneclient_core",
- "oneclient_db",
- "oneclient_events",
- "oneclient_java",
- "oneclient_macro",
- "oneclient_mc",
- "oneclient_net",
- "oneclient_polyplus",
+ "golems_auth",
+ "golems_cluster",
+ "golems_common",
+ "golems_content",
+ "golems_core",
+ "golems_db",
+ "golems_events",
+ "golems_java",
+ "golems_macro",
+ "golems_mc",
+ "golems_net",
+ "golems_social",
  "open",
  "percent-encoding",
  "plusrenderer",
- "polyio",
+ "golems_io",
  "pulldown-cmark",
  "regex",
  "rfd",
@@ -4695,16 +4695,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_auth"
+name = "golems_auth"
 version = "2.11.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
  "md-5",
- "oneclient_common",
- "oneclient_events",
- "oneclient_net",
- "polyio",
+ "golems_common",
+ "golems_events",
+ "golems_net",
+ "golems_io",
  "rand 0.10.3",
  "reqwest 0.13.5",
  "serde",
@@ -4719,16 +4719,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_cluster"
+name = "golems_cluster"
 version = "2.11.0"
 dependencies = [
  "bytes 1.12.1",
  "chrono",
  "image",
- "oneclient_common",
- "oneclient_db",
- "oneclient_net",
- "polyio",
+ "golems_common",
+ "golems_db",
+ "golems_net",
+ "golems_io",
  "regex",
  "reqwest 0.13.5",
  "serde",
@@ -4743,7 +4743,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_common"
+name = "golems_common"
 version = "2.11.0"
 dependencies = [
  "directories",
@@ -4756,7 +4756,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_content"
+name = "golems_content"
 version = "2.11.0"
 dependencies = [
  "async-trait",
@@ -4765,11 +4765,11 @@ dependencies = [
  "futures-lite",
  "futures-util",
  "htmd",
- "oneclient_common",
- "oneclient_db",
- "oneclient_events",
- "oneclient_net",
- "polyio",
+ "golems_common",
+ "golems_db",
+ "golems_events",
+ "golems_net",
+ "golems_io",
  "pulldown-cmark",
  "reqwest 0.13.5",
  "serde",
@@ -4784,7 +4784,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_core"
+name = "golems_core"
 version = "2.11.0"
 dependencies = [
  "async-compression",
@@ -4808,19 +4808,19 @@ dependencies = [
  "interfrost",
  "libc",
  "md-5",
- "oneclient_auth",
- "oneclient_cluster",
- "oneclient_common",
- "oneclient_content",
- "oneclient_db",
- "oneclient_discord",
- "oneclient_events",
- "oneclient_java",
- "oneclient_mc",
- "oneclient_net",
- "oneclient_polyplus",
+ "golems_auth",
+ "golems_cluster",
+ "golems_common",
+ "golems_content",
+ "golems_db",
+ "golems_discord",
+ "golems_events",
+ "golems_java",
+ "golems_mc",
+ "golems_net",
+ "golems_social",
  "parking_lot",
- "polyio",
+ "golems_io",
  "rand 0.10.3",
  "regex",
  "reqwest 0.13.5",
@@ -4849,7 +4849,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_db"
+name = "golems_db"
 version = "2.11.0"
 dependencies = [
  "async-tempfile",
@@ -4864,19 +4864,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_discord"
+name = "golems_discord"
 version = "2.11.0"
 dependencies = [
  "chrono",
  "discord-rich-presence",
- "oneclient_common",
+ "golems_common",
  "tokio",
  "tracing",
  "tracing-subscriber",
 ]
 
 [[package]]
-name = "oneclient_events"
+name = "golems_events"
 version = "2.11.0"
 dependencies = [
  "thiserror 2.0.21",
@@ -4886,7 +4886,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_java"
+name = "golems_java"
 version = "2.11.0"
 dependencies = [
  "astral-tokio-tar",
@@ -4895,10 +4895,10 @@ dependencies = [
  "async_zip",
  "futures-lite",
  "futures-util",
- "oneclient_common",
- "oneclient_events",
- "oneclient_net",
- "polyio",
+ "golems_common",
+ "golems_events",
+ "golems_net",
+ "golems_io",
  "reqwest 0.13.5",
  "serde",
  "serde_json",
@@ -4909,7 +4909,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_macro"
+name = "golems_macro"
 version = "2.11.0"
 dependencies = [
  "proc-macro2",
@@ -4918,17 +4918,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_mc"
+name = "golems_mc"
 version = "2.11.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
  "futures-util",
  "interfrost",
- "oneclient_common",
- "oneclient_events",
- "oneclient_net",
- "polyio",
+ "golems_common",
+ "golems_events",
+ "golems_net",
+ "golems_io",
  "reqwest 0.13.5",
  "serde",
  "serde_json",
@@ -4940,7 +4940,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_net"
+name = "golems_net"
 version = "2.11.0"
 dependencies = [
  "arc-swap",
@@ -4948,9 +4948,9 @@ dependencies = [
  "bytes 1.12.1",
  "futures-lite",
  "futures-util",
- "oneclient_common",
- "oneclient_events",
- "polyio",
+ "golems_common",
+ "golems_events",
+ "golems_io",
  "reqwest 0.13.5",
  "serde",
  "serde_json",
@@ -4962,7 +4962,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "oneclient_polyplus"
+name = "golems_social"
 version = "2.11.0"
 dependencies = [
  "async-tungstenite 0.35.0",
@@ -4970,11 +4970,11 @@ dependencies = [
  "chrono",
  "futures-util",
  "image",
- "oneclient_auth",
- "oneclient_common",
- "oneclient_events",
- "oneclient_net",
- "polyio",
+ "golems_auth",
+ "golems_common",
+ "golems_events",
+ "golems_net",
+ "golems_io",
  "rand 0.10.3",
  "reqwest 0.13.5",
  "reqwest-websocket",
@@ -5331,7 +5331,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f3a9f18d041e6d0e102a0a46750538147e5e8992d3b4873aaafee2520b00ce3"
 
 [[package]]
-name = "polyio"
+name = "golems_io"
 version = "2.11.0"
 dependencies = [
  "astral-tokio-tar",

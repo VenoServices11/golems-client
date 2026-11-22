@@ -39,7 +39,7 @@ jobs:
 
       - name: Build
         shell: bash
-        run: cargo build --release --bin oneclient_app
+        run: cargo build --release --bin golems_app
 
       - name: Stage the VC++ runtime next to the app
         shell: bash
