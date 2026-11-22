@@ -41,7 +41,27 @@ use crate::theme::{colors, rounded, text_size};
 use crate::ui::{border_all_color, entrance_motion_layer};
 
 pub fn onboarding_total(has_migration: bool, picks_location: bool) -> usize {
-    7 + usize::from(has_migration) + usize::from(picks_location)
+    5 + usize::from(has_migration) + usize::from(picks_location)
+}
+
+// Golem's Client skips OneClient's terms step (no Polyfrost terms to accept; the terms route only
+// passes through) and the language step (English only), so the flow is: welcome, [location],
+// [migration], account, bundles, preferences, summary.
+
+pub fn step_before_migration(picks_location: bool) -> Route {
+    if picks_location {
+        Route::OnboardingLocation {}
+    } else {
+        Route::OnboardingWelcome {}
+    }
+}
+
+pub fn step_before_account(has_migration: bool, picks_location: bool) -> Route {
+    if has_migration {
+        Route::OnboardingMigration {}
+    } else {
+        step_before_migration(picks_location)
+    }
 }
 
 pub fn onboarding_step_index(route: &Route, has_migration: bool, picks_location: bool) -> usize {
@@ -51,13 +71,11 @@ pub fn onboarding_step_index(route: &Route, has_migration: bool, picks_location:
     match route {
         Route::OnboardingWelcome {} => 0,
         Route::OnboardingLocation {} => 1,
-        Route::OnboardingTerms {} => 1 + location,
-        Route::OnboardingMigration {} => 2 + location,
-        Route::OnboardingLanguage {} => 2 + shift,
-        Route::OnboardingAccount {} => 3 + shift,
-        Route::OnboardingBundles {} => 4 + shift,
-        Route::OnboardingPreferences {} => 5 + shift,
-        Route::OnboardingSummary {} => 6 + shift,
+        Route::OnboardingTerms {} | Route::OnboardingMigration {} => 1 + location,
+        Route::OnboardingLanguage {} | Route::OnboardingAccount {} => 1 + shift,
+        Route::OnboardingBundles {} => 2 + shift,
+        Route::OnboardingPreferences {} => 3 + shift,
+        Route::OnboardingSummary {} => 4 + shift,
         _ => 0,
     }
 }
@@ -349,14 +367,11 @@ mod tests {
             routes.push(Route::OnboardingLocation {});
         }
 
-        routes.push(Route::OnboardingTerms {});
-
         if has_migration {
             routes.push(Route::OnboardingMigration {});
         }
 
         routes.extend([
-            Route::OnboardingLanguage {},
             Route::OnboardingAccount {},
             Route::OnboardingBundles {},
             Route::OnboardingPreferences {},

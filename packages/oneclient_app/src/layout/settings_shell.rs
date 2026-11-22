@@ -484,7 +484,84 @@ fn sidebar(active: SettingsTab, changelog_unread: bool) -> impl IntoElement {
                         .into_element()
                 })),
         )
+        .child(SidebarLinks)
         .child(SidebarInfo::new())
+}
+
+/// Golem's Client's links, and the credit to OneClient it's based on
+#[derive(PartialEq)]
+struct SidebarLinks;
+
+impl Component for SidebarLinks {
+    fn render(&self) -> impl IntoElement {
+        use oneclient_common::constants::{DISCORD_URL, GITHUB_URL, TIKTOK_URL};
+
+        rect()
+            .vertical()
+            .width(Size::fill())
+            .spacing(8.)
+            .padding(Gaps::new(12., 0., 0., 0.))
+            .child(
+                rect()
+                    .horizontal()
+                    .spacing(4.)
+                    .child(LinkButton {
+                        icon: IconType::Discord,
+                        url: DISCORD_URL,
+                    })
+                    .child(LinkButton {
+                        icon: IconType::Tiktok,
+                        url: TIKTOK_URL,
+                    })
+                    .child(LinkButton {
+                        icon: IconType::Github,
+                        url: GITHUB_URL,
+                    }),
+            )
+            .child(
+                label()
+                    .text("Based on OneClient by Polyfrost")
+                    .font_size(text_size(11.))
+                    .color(colors::fg_secondary()),
+            )
+    }
+}
+
+#[derive(PartialEq)]
+struct LinkButton {
+    icon: IconType,
+    url: &'static str,
+}
+
+impl Component for LinkButton {
+    fn render(&self) -> impl IntoElement {
+        let mut hovering = use_state(|| false);
+        let url = self.url;
+
+        rect()
+            .width(Size::px(30.))
+            .height(Size::px(30.))
+            .center()
+            .corner_radius(rounded(6.))
+            .background(if *hovering.read() {
+                colors::ghost_overlay_hover()
+            } else {
+                Color::TRANSPARENT
+            })
+            .cursor(CursorIcon::Pointer)
+            .on_pointer_enter(move |_| *hovering.write() = true)
+            .on_pointer_leave(move |_| *hovering.write() = false)
+            .on_press(move |_| crate::platform::open_url(url))
+            .child(
+                Icon::new(self.icon)
+                    .size(16.)
+                    .color(if *hovering.read() {
+                        colors::fg_primary()
+                    } else {
+                        colors::fg_secondary()
+                    }),
+            )
+    }
 }
 
 #[derive(PartialEq)]

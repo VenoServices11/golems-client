@@ -158,7 +158,7 @@ fn guidance_for_step(step: MinecraftAuthStep) -> Option<AuthErrorGuidance> {
             AuthErrorGuidance::new(
                 "Your saved Microsoft sign-in has expired or was revoked, so your Minecraft session could not be renewed.",
                 &[
-                    "Sign out of the affected Minecraft account in OneClient",
+                    "Sign out of the affected Minecraft account in Golem's Client",
                     "Sign in to the account again",
                     "Once the new sign-in finishes, try launching Minecraft again",
                 ],
@@ -308,7 +308,7 @@ fn xerr(code: u64) -> MinecraftAuthError {
 fn network_guidance(failure: NetworkFailure) -> AuthErrorGuidance {
     match failure {
         NetworkFailure::Certificate => AuthErrorGuidance::new(
-            "OneClient reached the Microsoft sign-in service, but could not verify its security certificate. Something on this machine or network is intercepting the encrypted connection - usually antivirus HTTPS scanning, a school or workplace filter, or a VPN.",
+            "Golem's Client reached the Microsoft sign-in service, but could not verify its security certificate. Something on this machine or network is intercepting the encrypted connection - usually antivirus HTTPS scanning, a school or workplace filter, or a VPN.",
             &[
                 "Turn off HTTPS/SSL scanning in your antivirus (often called \"encrypted connection scanning\", \"web shield\", or \"SSL interception\")",
                 "Temporarily disable your VPN or proxy and try signing in again",
@@ -317,7 +317,7 @@ fn network_guidance(failure: NetworkFailure) -> AuthErrorGuidance {
             ],
         ),
         NetworkFailure::Handshake => AuthErrorGuidance::new(
-            "OneClient reached the Microsoft sign-in service, but the two could not agree on a secure connection. This normally means a proxy, filter, or antivirus in between is using outdated encryption settings.",
+            "Golem's Client reached the Microsoft sign-in service, but the two could not agree on a secure connection. This normally means a proxy, filter, or antivirus in between is using outdated encryption settings.",
             &[
                 "Turn off HTTPS/SSL scanning in your antivirus and try signing in again",
                 "Temporarily disable your VPN or proxy software",
@@ -326,7 +326,7 @@ fn network_guidance(failure: NetworkFailure) -> AuthErrorGuidance {
             ],
         ),
         NetworkFailure::Dns => AuthErrorGuidance::new(
-            "OneClient could not look up the address of the Microsoft sign-in service. This is a DNS problem on this machine or network, not a problem with your account.",
+            "Golem's Client could not look up the address of the Microsoft sign-in service. This is a DNS problem on this machine or network, not a problem with your account.",
             &[
                 "Check that your internet connection is working",
                 "Temporarily disable your VPN or proxy and try signing in again",
@@ -336,7 +336,7 @@ fn network_guidance(failure: NetworkFailure) -> AuthErrorGuidance {
             ],
         ),
         NetworkFailure::Generic => AuthErrorGuidance::new(
-            "OneClient could not connect to a Microsoft, Xbox, or Minecraft service needed for sign-in. This is usually a local network, DNS, proxy, firewall, hosts file, VPN, or antivirus issue.",
+            "Golem's Client could not connect to a Microsoft, Xbox, or Minecraft service needed for sign-in. This is usually a local network, DNS, proxy, firewall, hosts file, VPN, or antivirus issue.",
             &[
                 "Restart OneClient and try signing in again",
                 "Check that your internet connection is working",

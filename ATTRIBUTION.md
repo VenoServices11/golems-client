@@ -2,6 +2,27 @@
 
 The source code of this repository is licensed under the GNU General Public License, Version 3 only, which is provided in the file [LICENSE](./LICENSE), with a header provided below. Certain files in our library wrappers may be under a different license or [require credit](#additional-libraries), with their specific headers outlined in the below non-exhaustive list.
 
+## Golem's Client
+
+```txt
+Golem's Client - A Minecraft launcher, based on OneClient by Polyfrost
+Copyright (C) 2026~CURRENT  veno15
+Copyright (C) 2023~CURRENT  Polyfrost and Contributors
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
+```
+
+The Golem's Client name and logo (`packages/oneclient_app/icons/*`, `assets/logo.svg`, `assets/icons/icon-logo.svg`
+and `assets/icons/pixel/icon-logo.svg`) belong to veno15. Golem's Client contains none of Polyfrost's branding.
+
+Fonts: Inter (Copyright 2016 The Inter Project Authors), Poppins and JetBrains Mono, under the SIL Open Font License 1.1
+(see the `OFL.txt` next to each font).
+
 ## OneLauncher
 
 ```txt

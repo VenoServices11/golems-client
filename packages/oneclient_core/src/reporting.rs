@@ -40,7 +40,14 @@ fn drop_opted_out_breadcrumbs(breadcrumb: Breadcrumb) -> Option<Breadcrumb> {
     if opted_out { None } else { Some(breadcrumb) }
 }
 
+/// Golem's Client sends no crash reports: Sentry is never started, whatever the settings say.
 pub fn init(enabled: bool) -> Option<ClientInitGuard> {
+    const CRASH_REPORTING_REMOVED: bool = true;
+    if CRASH_REPORTING_REMOVED || SENTRY_DSN.is_empty() {
+        tracing::debug!(enabled, "crash reporting is not part of Golem's Client");
+        return None;
+    }
+
     if oneclient_common::consent::declined() {
         tracing::debug!("crash reporting disabled: terms and privacy policy declined");
         return None;
@@ -59,7 +66,7 @@ pub fn init(enabled: bool) -> Option<ClientInitGuard> {
     let guard = sentry::init((
         SENTRY_DSN,
         ClientOptions::new()
-            .release(format!("oneclient@{}", env!("CARGO_PKG_VERSION")))
+            .release(format!("golems-client@{}", env!("CARGO_PKG_VERSION")))
             .environment(ENVIRONMENT)
             .attach_stacktrace(true)
             .send_default_pii(false)

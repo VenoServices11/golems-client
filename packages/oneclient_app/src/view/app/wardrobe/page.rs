@@ -1955,6 +1955,11 @@ fn cape_groups(ctx: &GridCtx) -> Vec<Block> {
         }
     }
 
+    // Poly+ isn't part of Golem's Client (its servers are always off), so only Minecraft capes show
+    if oneclient_common::consent::declined() {
+        return out;
+    }
+
     out.push(Block::heading(
         t("oneclient.wardrobe.capes.plus.title"),
         t("oneclient.wardrobe.capes.plus.description"),

@@ -12,7 +12,8 @@ use crate::routes::Route;
 use crate::theme::{colors, rounded, text_size};
 use crate::ui::border_all_color;
 use crate::view::onboarding::{
-    choice_row_sized, onboarding_illustration, onboarding_slide, step_heading,
+    choice_row_sized, onboarding_illustration, onboarding_slide, step_before_migration,
+    step_heading,
 };
 
 fn migrated_categories(source: &[SourceInstance]) -> Vec<String> {
@@ -47,6 +48,7 @@ impl Component for OnboardingMigration {
         let migration_query = use_migration();
         let bundles_query = use_onboarding_bundles();
         let selection = use_onboarding_selection();
+        let back = step_before_migration(*selection.picks_location.read());
         let mut categories = selection.migrated_categories;
         // Shared across the flow the file import is dispatched later on Setup
         let mut import_folder = selection.import_folder;
@@ -143,10 +145,10 @@ impl Component for OnboardingMigration {
                             ),
                     ),
             ))
-            .child(migration_nav(bundles_loaded, move || {
+            .child(migration_nav(back, bundles_loaded, move || {
                 categories.set(Some(migrated_categories(&detection.instances)));
 
-                let _ = RouterContext::get().replace(Route::OnboardingLanguage {});
+                let _ = RouterContext::get().replace(Route::OnboardingAccount {});
             }))
             .into_element()
     }
@@ -421,7 +423,11 @@ fn import_choice_card(
 }
 
 /// Like `onboarding_nav` but Next runs `on_next` (apply migration + navigate) instead of a plain route replace
-fn migration_nav(next_enabled: bool, on_next: impl FnMut() + 'static) -> impl IntoElement {
+fn migration_nav(
+    back: Route,
+    next_enabled: bool,
+    on_next: impl FnMut() + 'static,
+) -> impl IntoElement {
     let mut on_next = on_next;
     rect()
         .horizontal()
@@ -435,7 +441,7 @@ fn migration_nav(next_enabled: bool, on_next: impl FnMut() + 'static) -> impl In
                 .secondary()
                 .width(Size::px(128.))
                 .on_press(move |_| {
-                    let _ = RouterContext::get().replace(Route::OnboardingTerms {});
+                    let _ = RouterContext::get().replace(back.clone());
                 })
                 .text(t("oneclient.common.back")),
         )

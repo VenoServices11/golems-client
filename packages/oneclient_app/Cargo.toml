@@ -1,6 +1,6 @@
 [package]
 name = "oneclient_app"
-description = "OneClient Freya App"
+description = "Golem's Client launcher"
 version = { workspace = true }
 license = { workspace = true }
 edition = { workspace = true }
@@ -97,39 +97,26 @@ windows = { version = "=0.62.2", features = [
 winresource = "=0.1.31"
 
 [package.metadata.packager]
-product-name = "OneClient"
-identifier = "org.polyfrost.OneClient"
+product-name = "Golem's Client"
+identifier = "dev.golemsutils.GolemsClient"
 category = "Game"
-publisher = "Polyfrost Inc."
-copyright = "© 2026 Polyfrost Inc."
-homepage = "https://polyfrost.org/projects/oneclient"
-long-description = "Next-generation open source Minecraft launcher"
-formats = ["nsis", "app", "dmg", "deb", "appimage"]
+publisher = "veno15"
+copyright = "© 2026 veno15. Based on OneClient by Polyfrost (GPL-3.0)."
+homepage = "https://github.com/VenoServices11/golems-client"
+long-description = "Golem's Client, a Minecraft launcher by veno15, based on OneClient by Polyfrost"
+formats = ["nsis"]
 binaries = [{ path = "oneclient_app", main = true }]
 icons = [
   "icons/32x32.png",
   "icons/64x64.png",
   "icons/128x128.png",
   "icons/128x128@2x.png",
-  "icons/icon.icns",
   "icons/icon.ico",
 ]
 resources = [
-  { src = "icons/generated/Assets.car", target = "Assets.car" },
   # >>> CRT_RESOURCES >>>
   # <<< CRT_RESOURCES <<<
 ]
-
-[package.metadata.packager.macos]
-minimum-system-version = "10.14"
-entitlements = "distribution/App.entitlements"
-info-plist-path = "distribution/Info.plist"
-
-[package.metadata.packager.dmg]
-background = "distribution/dmg-background.tiff"
-window-size = { width = 600, height = 400 }
-app-position = { x = 160, y = 190 }
-application-folder-position = { x = 440, y = 190 }
 
 [package.metadata.packager.windows]
 digest-algorithm = "sha256"
@@ -137,7 +124,7 @@ timestamp-url = "https://timestamp.digicert.com"
 
 [package.metadata.packager.nsis]
 preinstall-section = """
-Section "-OneClientTauriMigration"
+Section "-GolemsClientCleanup"
   ; Stale Tauri root start-menu shortcut (this build only writes the sub-folder one).
   Delete "$SMPROGRAMS\\${PRODUCTNAME}.lnk"
   ; Old Tauri main binary (renamed OneClient.exe -> oneclient_app.exe). Locked while
@@ -158,29 +145,10 @@ Section "-VCRedist"
   ${EndIf}
 
   ${If} $PassiveMode != 1
-    MessageBox MB_OK|MB_ICONEXCLAMATION "This build of OneClient needs the Microsoft Visual C++ Redistributable (x64) 14.40 or newer. Install it from https://aka.ms/vs/17/release/vc_redist.x64.exe, then run this installer again."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "This build of Golem's Client needs the Microsoft Visual C++ Redistributable (x64) 14.40 or newer. Install it from https://aka.ms/vs/17/release/vc_redist.x64.exe, then run this installer again."
   ${EndIf}
 
   vcredist_done:
 SectionEnd
 ; <<< VC_REDIST_SECTION <<<
 """
-
-[package.metadata.packager.deb]
-desktop-template = "distribution/linux/org.polyfrost.oneclient.template"
-
-[package.metadata.packager.appimage]
-# desktop entry generated from the deb template above via the linux config
-excluded-libraries = ["libwayland-*"]
-
-[package.metadata.generate-rpm]
-auto-req = "builtin"
-assets = [
-  { source = "target/release/oneclient_app", dest = "/usr/bin/oneclient_app", mode = "755" },
-  { source = "target/release/oneclient_app.desktop", dest = "/usr/share/applications/oneclient_app.desktop", mode = "644" },
-  { source = "icons/32x32.png", dest = "/usr/share/icons/hicolor/32x32/apps/oneclient_app.png", mode = "644" },
-  { source = "icons/64x64.png", dest = "/usr/share/icons/hicolor/64x64/apps/oneclient_app.png", mode = "644" },
-  { source = "icons/128x128.png", dest = "/usr/share/icons/hicolor/128x128/apps/oneclient_app.png", mode = "644" },
-  { source = "icons/512x512.png", dest = "/usr/share/icons/hicolor/512x512/apps/oneclient_app.png", mode = "644" },
-]
-

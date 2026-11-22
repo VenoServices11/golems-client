@@ -2,12 +2,15 @@ use freya::prelude::*;
 use oneclient_auth::MinecraftAccount;
 
 use crate::components::{Avatar, Button, Icon, IconType, use_microsoft_login};
-use crate::hooks::{try_default_account, use_current_account};
+use crate::hooks::{
+    has_migration_data, try_default_account, use_current_account, use_migration,
+    use_onboarding_selection,
+};
 use crate::i18n::t;
 use crate::routes::Route;
 use crate::theme::{colors, text_size};
 use crate::view::onboarding::{
-    onboarding_illustration, onboarding_nav, onboarding_page, step_heading,
+    onboarding_illustration, onboarding_nav, onboarding_page, step_before_account, step_heading,
 };
 
 #[derive(PartialEq)]
@@ -17,6 +20,11 @@ impl Component for OnboardingAccount {
     fn render(&self) -> impl IntoElement {
         let account_query = use_current_account();
         let msa = use_microsoft_login();
+        let migration_query = use_migration();
+        let back = step_before_account(
+            has_migration_data(&migration_query),
+            *use_onboarding_selection().picks_location.read(),
+        );
 
         let account = try_default_account(&account_query);
         let has_account = account.is_some();
@@ -43,7 +51,7 @@ impl Component for OnboardingAccount {
             onboarding_illustration(IconType::OnboardingAccount),
             content,
             onboarding_nav(
-                Some(Route::OnboardingLanguage {}),
+                Some(back),
                 Route::OnboardingBundles {},
                 has_account,
             ),

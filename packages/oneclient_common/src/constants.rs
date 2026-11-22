@@ -1,9 +1,13 @@
 pub const DUMMY_REPLACE_NEWLINE: &str = "\n";
 
-pub const MICROSOFT_CLIENT_ID: &str = "9419b7ee-1448-4d1b-b52a-550d8f36ab56";
+/// Golem's Client's own Azure app registration (personal Microsoft accounts).
+/// Placeholder until the app is registered; Microsoft sign-in fails until it is filled in.
+pub const MICROSOFT_CLIENT_ID: &str = "00000000-0000-0000-0000-000000000000";
 pub const MINECRAFT_SCOPES: &str = "XboxLive.SignIn XboxLive.offline_access";
-pub const CURSEFORGE_API_KEY: &str = "$2a$10$6utA1UNSmFPrE/Lh7b7ndeeGmiOkjKNY8kpFB0fsmE/d42ZAfFgCe";
-pub const DISCORD_CLIENT_ID: &str = "1426999264633946334";
+/// Empty until Golem's Client has its own CurseForge key; CurseForge is hidden while it is.
+pub const CURSEFORGE_API_KEY: &str = "";
+/// Golem's Client's Discord application. Empty until it is made; Rich Presence stays off while it is.
+pub const DISCORD_CLIENT_ID: &str = "";
 
 pub const MODRINTH_API_URL: &str = "https://api.modrinth.com";
 pub const MODRINTH_CDN_PREFIX: &str = "https://cdn.modrinth.com/data/";
@@ -13,24 +17,24 @@ pub const METADATA_API_URL: &str = "https://meta.polyfrost.org";
 pub const MCLOGS_API_URL: &str = "https://api.mclo.gs/1";
 pub const SKYCLIENT_BASE_URL: &str =
     "https://raw.githubusercontent.com/SkyblockClient/SkyblockClient-REPO/refs/heads/main/v1";
-pub const META_URL_BASE: &str = "https://data-v2.polyfrost.org";
-pub const TOS_URL: &str = "https://polyfrost.org/legal/terms";
-pub const PRIVACY_URL: &str = "https://polyfrost.org/legal/privacy";
+/// Our own copy of the launcher data (the `data` branch of the repo)
+pub const META_URL_BASE: &str =
+    "https://raw.githubusercontent.com/VenoServices11/golems-client/data";
+pub const TOS_URL: &str = "https://github.com/VenoServices11/golems-client/blob/main/LICENSE";
+pub const PRIVACY_URL: &str = "https://github.com/VenoServices11/golems-client#privacy";
 pub const PLUS_BACKEND_URL: &str = "https://plus.polyfrost.org";
 pub const CRASH_DATA_URL: &str =
     "https://raw.githubusercontent.com/Polyfrost/CrashData/refs/heads/main/crashes.json";
 
-pub const DISCORD_URL: &str = "https://discord.com/invite/polyfrost";
+pub const DISCORD_URL: &str = "https://discord.gg/q67qzHG2kf";
+pub const TIKTOK_URL: &str = "https://www.tiktok.com/@holygrajl";
+pub const GITHUB_URL: &str = "https://github.com/VenoServices11/golems-client";
 
-pub const SENTRY_DSN: &str = match option_env!("ONECLIENT_SENTRY_DSN") {
-    Some(dsn) => dsn,
-    None => {
-        "https://e7dff7e07427e1a28b9212cfcc8ddc1e@o4511714343124992.ingest.us.sentry.io/4511714354135040"
-    }
-};
+/// Crash reporting is removed from Golem's Client: no DSN, and `reporting::init` never starts Sentry.
+pub const SENTRY_DSN: &str = "";
 
 pub const LAUNCHER_LABEL: &str = concat!(
-    "OneClient v",
+    "Golem's Client v",
     env!("CARGO_PKG_VERSION"),
     cfg_select! {
         debug_assertions => " (debug)",

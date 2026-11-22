@@ -8,7 +8,6 @@ use crate::service::RequestClient;
 
 const CONNECTIVITY_URL: &str = "https://cp.cloudflare.com/generate_204";
 const MC_AUTH_URL: &str = "https://api.minecraftservices.com/";
-const POLYFROST_STATUS_URL: &str = "https://status.polyfrost.org/index.json";
 
 const PROBE_TIMEOUT: Duration = Duration::from_secs(8);
 
@@ -130,26 +129,8 @@ pub async fn check_service_status(requester: &RequestClient) -> ServiceStatus {
 
     let mc_auth_up = reachable(client, MC_AUTH_URL).await;
 
-    let polyfrost_up = match client
-        .get(POLYFROST_STATUS_URL)
-        .timeout(PROBE_TIMEOUT)
-        .send()
-        .await
-    {
-        Ok(resp) => resp
-            .json::<serde_json::Value>()
-            .await
-            .ok()
-            .and_then(|json| {
-                json.get("data")?
-                    .get("attributes")?
-                    .get("aggregate_state")?
-                    .as_str()
-                    .map(|s| s == "operational")
-            })
-            .unwrap_or(true),
-        Err(_) => false,
-    };
+    // Golem's Client doesn't depend on Polyfrost's services, so their status page isn't checked
+    let polyfrost_up = true;
 
     ServiceStatus {
         online: true,

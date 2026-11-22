@@ -34,11 +34,6 @@ impl Component for SettingsLauncher {
             move || v
         });
 
-        let crash_reporting = use_state({
-            let v = settings.crash_reporting;
-            move || v
-        });
-
         let start_maximized = use_state({
             let v = settings.start_maximized;
             move || v
@@ -67,7 +62,6 @@ impl Component for SettingsLauncher {
         let mut first = use_state(|| true);
         use_side_effect(move || {
             let discord = *discord_rpc.read();
-            let crash = *crash_reporting.read();
             let maximized = *start_maximized.read();
             let background = *run_in_background.read();
             let tray = *show_tray_icon.read();
@@ -79,7 +73,6 @@ impl Component for SettingsLauncher {
             }
             dispatch.edit_settings(|next| {
                 next.discord_enabled = discord;
-                next.crash_reporting = crash;
                 next.start_maximized = maximized;
                 next.run_in_background = background;
                 next.show_tray_icon = tray;
@@ -87,20 +80,6 @@ impl Component for SettingsLauncher {
                 next.open_game_log_on_launch = game_log;
             });
         });
-
-        // The only way back for someone who declined during onboarding
-        let consent_summary = if settings.declined_tos {
-            t("oneclient.settings.launcher.terms.declined")
-        } else {
-            t("oneclient.settings.launcher.terms.accepted")
-        };
-        let review_terms = Button::new()
-            .secondary()
-            .small()
-            .on_press(|_| {
-                let _ = RouterContext::get().replace(Route::OnboardingTerms {});
-            })
-            .text(t("oneclient.settings.launcher.terms.review"));
 
         settings_page()
             .child(section_header(t(
@@ -113,16 +92,6 @@ impl Component for SettingsLauncher {
                 resettable(toggle(discord_rpc), discord_rpc, defaults.discord_enabled),
             ))
             .child(settings_row(
-                IconType::AlertTriangle,
-                t("oneclient.settings.launcher.crash_reporting.title"),
-                t("oneclient.settings.launcher.crash_reporting.description"),
-                resettable(
-                    toggle(crash_reporting),
-                    crash_reporting,
-                    defaults.crash_reporting,
-                ),
-            ))
-            .child(settings_row(
                 IconType::Maximize01,
                 t("oneclient.settings.launcher.start_maximized.title"),
                 t("oneclient.settings.launcher.start_maximized.description"),
@@ -131,12 +100,6 @@ impl Component for SettingsLauncher {
                     start_maximized,
                     defaults.start_maximized,
                 ),
-            ))
-            .child(settings_row(
-                IconType::File02,
-                t("oneclient.settings.launcher.terms.title"),
-                consent_summary,
-                review_terms,
             ))
             .child(section_header(t(
                 "oneclient.settings.launcher.section.system",
@@ -520,33 +483,11 @@ inventory::submit! {
 
 inventory::submit! {
     SearchItem {
-        id: "launcher.crash_reporting",
-        icon: IconType::AlertTriangle,
-        title: "oneclient.settings.launcher.crash_reporting.title",
-        description: "oneclient.settings.launcher.crash_reporting.description",
-        keywords: &["crash", "report", "sentry", "telemetry", "errors"],
-        route: Route::SettingsLauncher {},
-    }
-}
-
-inventory::submit! {
-    SearchItem {
         id: "launcher.start_maximized",
         icon: IconType::Maximize01,
         title: "oneclient.settings.launcher.start_maximized.title",
         description: "oneclient.settings.launcher.start_maximized.description",
         keywords: &["maximized", "window", "fullscreen", "startup"],
-        route: Route::SettingsLauncher {},
-    }
-}
-
-inventory::submit! {
-    SearchItem {
-        id: "launcher.terms",
-        icon: IconType::File02,
-        title: "oneclient.settings.launcher.terms.title",
-        description: "oneclient.layout.search.launcher.terms.description",
-        keywords: &["terms", "privacy", "tos", "policy", "consent"],
         route: Route::SettingsLauncher {},
     }
 }

@@ -1,14 +1,14 @@
 {
-  "name": "PolyGlass Light",
+  "name": "Iron Light",
   "colors": {
     "light": true,
-    "page": "#D0D7F3",
-    "page_elevated": "#D9E0F7",
-    "card": "#E3EAFB",
-    "component": "#EBF2FF",
-    "border": "#A3A3A34D",
-    "text": "#000000",
-    "text_secondary": "#4E5661",
-    "accent": "#2B4BFF"
+    "page": "#F4F3F0",
+    "page_elevated": "#FAFAF8",
+    "card": "#FFFFFF",
+    "component": "#FFFFFF",
+    "border": "#0000001F",
+    "text": "#121212",
+    "text_secondary": "#5E5C57",
+    "accent": "#E5484D"
   }
 }

@@ -10,7 +10,7 @@ const RECONNECT_BACKOFF: Duration = Duration::from_secs(60);
 
 const IDLE_POLL: Duration = Duration::from_secs(3600);
 
-const LARGE_IMAGE: &str = "onelauncher_logo_512";
+const LARGE_IMAGE: &str = "logo";
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Presence {
@@ -97,7 +97,8 @@ impl Worker {
     fn new(enabled: bool) -> Self {
         Self {
             client: DiscordIpcClient::new(DISCORD_CLIENT_ID),
-            enabled,
+            // no Discord application yet: Rich Presence stays off
+            enabled: enabled && !DISCORD_CLIENT_ID.is_empty(),
             connected: false,
             ever_connected: false,
             presence: Presence::Idle,
@@ -142,6 +143,7 @@ impl Worker {
     }
 
     fn set_enabled(&mut self, enabled: bool) {
+        let enabled = enabled && !DISCORD_CLIENT_ID.is_empty();
         if self.enabled == enabled {
             return;
         }
@@ -169,9 +171,12 @@ impl Worker {
             .assets(
                 Assets::new()
                     .large_image(LARGE_IMAGE)
-                    .large_text("OneClient"),
+                    .large_text("Golem's Client"),
             )
-            .buttons(vec![Button::new("Website", "https://polyfrost.org/")]);
+            .buttons(vec![Button::new(
+                "Discord",
+                oneclient_common::constants::DISCORD_URL,
+            )]);
 
         if let Err(err) = self.client.set_activity(activity) {
             tracing::warn!("Discord RPC set_activity failed: {err}");

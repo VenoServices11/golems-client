@@ -1193,7 +1193,7 @@ fn save_view(
         (
             ExportMode::OneClient,
             IconType::IconLogo,
-            "OneClient",
+            "Golem's Client",
             Some(t("oneclient.clusters.export.oneclient.badge")),
             t("oneclient.clusters.export.oneclient.blurb"),
         ),

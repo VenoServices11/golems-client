@@ -3,8 +3,9 @@ use oneclient_common::paths;
 use oneclient_net::RequestClient;
 use oneclient_net::{EtagPolicy, fetch_cached};
 
+/// Published with each build on the repo's `latest` release (from `distribution/changelog.json`)
 const CHANGELOG_URL: &str =
-    "https://github.com/Polyfrost/OneLauncher/releases/latest/download/changelog.json";
+    "https://github.com/VenoServices11/golems-client/releases/download/latest/changelog.json";
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct ChangelogEntry {

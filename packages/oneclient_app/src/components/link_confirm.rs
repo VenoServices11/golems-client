@@ -113,12 +113,10 @@ impl Component for ConfirmLinkOverlay {
     }
 }
 
+/// Golem's Client's own links (its repo, Discord and TikTok) open without asking
 fn is_first_party(url: &str) -> bool {
-    let host = url
-        .split_once("://")
-        .map_or(url, |(_, rest)| rest)
-        .split(['/', '?', '#', ':'])
-        .next()
-        .unwrap_or_default();
-    host == "polyfrost.org" || host.ends_with(".polyfrost.org")
+    use oneclient_common::constants::{DISCORD_URL, GITHUB_URL, TIKTOK_URL};
+    [GITHUB_URL, DISCORD_URL, TIKTOK_URL]
+        .iter()
+        .any(|own| url == *own || url.starts_with(&format!("{own}/")))
 }

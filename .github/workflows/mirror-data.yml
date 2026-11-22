@@ -1,0 +1,40 @@
+name: Mirror launcher data
+
+# Run by hand. Makes our own copy of the launcher's data files (version list and art, the mod bundles,
+# bad-mod lists) on the `data` branch, which the launcher reads from raw.githubusercontent.com.
+# After the first copy, the files there are ours to edit: change the bundles on the `data` branch.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stop if the data branch already exists
+        run: |
+          if git ls-remote --exit-code --heads origin data >/dev/null; then
+            echo "::error::The data branch already exists. This only makes the first copy, so it never overwrites edits."
+            exit 1
+          fi
+      - name: Download
+        run: python3 .github/scripts/mirror_data.py "$RUNNER_TEMP/data"
+      - name: Publish to the data branch
+        run: |
+          cd "$RUNNER_TEMP/data"
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cat > README.md <<'MD'
+          # Golem's Client data
+
+          Files the launcher downloads: the version list and art (`oneclient/versions`), the mod bundles
+          (`oneclient/bundles`) and the bad-mod lists. First copied from OneClient's data host by the
+          "Mirror launcher data" workflow; edit them here.
+          MD
+          git add -A
+          git commit -qm "Launcher data"
+          git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data

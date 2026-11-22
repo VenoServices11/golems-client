@@ -295,7 +295,9 @@ impl Component for BrowserBody {
             (None, Some(c)) if loader_fixed => vec![c.mc_loader],
             _ => picked_loader.into_iter().collect(),
         };
-        let curseforge_blocked = loader_fixed && loaders.contains(&GameLoader::Ornithe);
+        // Golem's Client is Modrinth-only until it has its own CurseForge API key
+        let curseforge_blocked = (loader_fixed && loaders.contains(&GameLoader::Ornithe))
+            || oneclient_common::constants::CURSEFORGE_API_KEY.is_empty();
         if curseforge_blocked && *provider.peek() == ProviderId::CurseForge {
             provider.set(ProviderId::Modrinth);
         }
@@ -605,7 +607,14 @@ fn header(
         .child(
             SegmentedControl::new(provider)
                 .no_tint()
-                .segments(ProviderId::REMOTE_PROVIDERS.iter().map(move |provider| {
+                .segments(
+                    ProviderId::REMOTE_PROVIDERS
+                        .iter()
+                        .filter(|provider| {
+                            **provider != ProviderId::CurseForge
+                                || !oneclient_common::constants::CURSEFORGE_API_KEY.is_empty()
+                        })
+                        .map(move |provider| {
                     let mut segment = Segment::new(*provider).icon(IconType::from(*provider));
                     if curseforge_blocked && *provider == ProviderId::CurseForge {
                         segment = segment
@@ -617,7 +626,8 @@ fn header(
                     } else {
                         segment
                     }
-                }))
+                        }),
+                )
                 .into_element(),
         )
         .child(

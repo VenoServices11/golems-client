@@ -4,16 +4,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 const GATED_DOMAINS: &[&str] = &["polyfrost.org", "sentry.io"];
 
 /// Hosts that are allowed even if someone didn't accept TOS
-const ALLOWED_HOSTS: &[&str] = &[
-    "data-v2.polyfrost.org",
-    "meta.polyfrost.org",
-    "status.polyfrost.org",
-];
+const ALLOWED_HOSTS: &[&str] = &["data-v2.polyfrost.org", "meta.polyfrost.org"];
 
-static DECLINED: AtomicBool = AtomicBool::new(false);
+static DECLINED: AtomicBool = AtomicBool::new(true);
 
-pub fn init(declined: bool) {
-    DECLINED.store(declined, Ordering::SeqCst);
+/// Golem's Client never agrees to Polyfrost's terms, so their services (Poly+, Sentry and the rest of
+/// polyfrost.org) are always blocked; only the public metadata hosts below stay reachable.
+pub fn init(_declined: bool) {
+    DECLINED.store(true, Ordering::SeqCst);
 }
 
 pub fn decline() {
@@ -92,7 +90,6 @@ mod tests {
             "https://data-v2.polyfrost.org/oneclient/versions/art/Tricky_Trials.jpg",
             "https://data-v2.polyfrost.org/oneclient/tos.json",
             "https://meta.polyfrost.org/fabric/v2/manifest.json",
-            "https://status.polyfrost.org/index.json",
             "https://META.POLYFROST.ORG./minecraft/v1/manifest.json",
         ] {
             assert!(!is_gated_url(url), "unexpected gate on {url}");

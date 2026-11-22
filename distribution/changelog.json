@@ -1,0 +1,6 @@
+[
+  {
+    "version": "1.0.0",
+    "body": "The first Golem's Client build.\n\n- Golem's Client name, logo and Iron colours (Poppy red accent, Inter font)\n- Minecraft 1.21.11 with Fabric, with the HUD, Performance, Quality of Life and Utility bundles\n- No telemetry, crash reporting or Polyfrost online services\n- Discord and TikTok links\n\nBased on OneClient by Polyfrost (GPL-3.0)."
+  }
+]

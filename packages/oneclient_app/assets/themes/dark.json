@@ -1,14 +1,14 @@
 {
-  "name": "PolyGlass Dark",
+  "name": "Iron Dark",
   "colors": {
     "light": false,
-    "page": "#11171C",
-    "page_elevated": "#151C22",
-    "card": "#1A2229",
-    "component": "#1A2229",
-    "border": "#FFFFFF1A",
-    "text": "#D5DBFF",
-    "text_secondary": "#757883",
-    "accent": "#2B4BFF"
+    "page": "#0E0E10",
+    "page_elevated": "#121214",
+    "card": "#141417",
+    "component": "#1A1A1E",
+    "border": "#FFFFFF14",
+    "text": "#EDEDEF",
+    "text_secondary": "#9A9AA2",
+    "accent": "#E5484D"
   }
 }

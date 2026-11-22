@@ -15,7 +15,8 @@ pub mod colors;
 
 pub const NAVBAR_HEIGHT_PX: f32 = 80.;
 pub const HOME_PADDING_PX: f32 = 48.;
-pub const DEFAULT_FONT: &str = "Poppins";
+pub const DEFAULT_FONT: &str = "Inter";
+const POPPINS_FONT: &str = "Poppins";
 pub const MONO_FONT: &str = "JetBrains Mono";
 const MINECRAFT_FONT: &str = "Minecraft";
 const PIXEL_BOOST_MAX: f32 = 2.5;
@@ -212,7 +213,7 @@ pub fn pixel_font_size_of(family: &str) -> Option<f32> {
 }
 
 pub fn font_families() -> Vec<String> {
-    let mut families: Vec<String> = [DEFAULT_FONT, MONO_FONT, MINECRAFT_FONT]
+    let mut families: Vec<String> = [DEFAULT_FONT, POPPINS_FONT, MONO_FONT, MINECRAFT_FONT]
         .into_iter()
         .map(str::to_string)
         .chain(
@@ -321,7 +322,7 @@ pub fn pixel_icon_size(size: f32, cells: f32) -> f32 {
 pub fn wordmark(width: f32, height: f32, color: Color) -> Element {
     if colors::active_theme().pixel_icons {
         return label()
-            .text("ONECLIENT")
+            .text("GOLEM'S CLIENT")
             .font_family(font())
             .font_weight(FontWeight::BOLD)
             .font_size(text_size(height * 0.83))
@@ -348,17 +349,22 @@ pub fn rounded(radius: f32) -> CornerRadius {
 }
 
 pub fn load_fonts() -> Vec<(Cow<'static, str>, Bytes)> {
-    const FONTS: [(&str, &str); 13] = [
-        (DEFAULT_FONT, "fonts/Poppins/Poppins-Bold.ttf"),
-        (DEFAULT_FONT, "fonts/Poppins/Poppins-BoldItalic.ttf"),
-        (DEFAULT_FONT, "fonts/Poppins/Poppins-SemiBold.ttf"),
-        (DEFAULT_FONT, "fonts/Poppins/Poppins-SemiBoldItalic.ttf"),
-        (DEFAULT_FONT, "fonts/Poppins/Poppins-Medium.ttf"),
-        (DEFAULT_FONT, "fonts/Poppins/Poppins-MediumItalic.ttf"),
-        (DEFAULT_FONT, "fonts/Poppins/Poppins-Regular.ttf"),
-        (DEFAULT_FONT, "fonts/Poppins/Poppins-Italic.ttf"),
-        (DEFAULT_FONT, "fonts/Poppins/Poppins-Light.ttf"),
-        (DEFAULT_FONT, "fonts/Poppins/Poppins-LightItalic.ttf"),
+    const FONTS: [(&str, &str); 18] = [
+        (DEFAULT_FONT, "fonts/Inter/Inter-Regular.ttf"),
+        (DEFAULT_FONT, "fonts/Inter/Inter-Medium.ttf"),
+        (DEFAULT_FONT, "fonts/Inter/Inter-SemiBold.ttf"),
+        (DEFAULT_FONT, "fonts/Inter/Inter-Bold.ttf"),
+        (DEFAULT_FONT, "fonts/Inter/Inter-ExtraBold.ttf"),
+        (POPPINS_FONT, "fonts/Poppins/Poppins-Bold.ttf"),
+        (POPPINS_FONT, "fonts/Poppins/Poppins-BoldItalic.ttf"),
+        (POPPINS_FONT, "fonts/Poppins/Poppins-SemiBold.ttf"),
+        (POPPINS_FONT, "fonts/Poppins/Poppins-SemiBoldItalic.ttf"),
+        (POPPINS_FONT, "fonts/Poppins/Poppins-Medium.ttf"),
+        (POPPINS_FONT, "fonts/Poppins/Poppins-MediumItalic.ttf"),
+        (POPPINS_FONT, "fonts/Poppins/Poppins-Regular.ttf"),
+        (POPPINS_FONT, "fonts/Poppins/Poppins-Italic.ttf"),
+        (POPPINS_FONT, "fonts/Poppins/Poppins-Light.ttf"),
+        (POPPINS_FONT, "fonts/Poppins/Poppins-LightItalic.ttf"),
         (MONO_FONT, "fonts/JetBrainsMono/JetBrainsMonoVariable.ttf"),
         (MINECRAFT_FONT, "fonts/Minecraft/Minecraft-Regular.otf"),
         (MINECRAFT_FONT, "fonts/Minecraft/Minecraft-Bold.otf"),

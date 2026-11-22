@@ -76,6 +76,11 @@ async fn run_simulated_update() -> anyhow::Result<()> {
 }
 
 async fn run_check(auto_install: bool, events: EventBus) -> anyhow::Result<()> {
+    if UPDATER_PUBKEY.is_empty() {
+        tracing::info!("update signing isn't set up yet; skipping the update check");
+        return Ok(());
+    }
+
     // `check_update` performs a blocking HTTP request so offload it to a thread pool
     let Some(update) = tokio::task::spawn_blocking(check_for_update).await?? else {
         tracing::info!("no update available");

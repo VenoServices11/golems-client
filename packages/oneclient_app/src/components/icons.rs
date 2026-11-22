@@ -176,6 +176,7 @@ pub enum IconType {
     Sliders04,
     Square,
     Terminal,
+    Tiktok,
     Trash01,
     Users01,
     XClose,

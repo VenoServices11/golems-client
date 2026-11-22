@@ -247,9 +247,9 @@ pub mod tray {
     #[cfg(target_os = "macos")]
     const REPORT_ID: &str = "oneclient.report";
     #[cfg(target_os = "macos")]
-    const HELP_URL: &str = "https://discord.gg/polyfrost";
+    const HELP_URL: &str = oneclient_common::constants::DISCORD_URL;
     #[cfg(target_os = "macos")]
-    const REPORT_URL: &str = "https://github.com/Polyfrost/OneLauncher/issues/new/choose";
+    const REPORT_URL: &str = "https://github.com/VenoServices11/golems-client/issues/new";
 
     #[cfg(target_os = "macos")]
     const ICON: &[u8] = include_bytes!("../icons/tray.png");

@@ -1,107 +1,46 @@
 <div align="center">
 
-<img src=".github/media/RepoBanner.png" alt="Repository Banner" />
+<img src="packages/oneclient_app/icons/128x128.png" alt="Golem's Client" width="96" />
 
-# OneClient  |  OneLauncher
-The monorepo containing the code for OneLauncher, OneClient, and their core backend.
+# Golem's Client
 
-OneClient is a Minecraft client featuring fully 100% open-source components, offering many packaged and pre-configured mods in one click.
+A Minecraft launcher by veno15 for Minecraft 1.21.11 with Fabric: one click gets you a set of
+performance, HUD, quality-of-life and utility mods, plus a mod browser, multiple instances and a
+skin and account manager.
+
+[Discord](https://discord.gg/q67qzHG2kf) · [TikTok](https://www.tiktok.com/@holygrajl)
 
 </div>
 
 ## Installing
 
-You can install the latest release of OneClient from our website: [https://polyfrost.org/projects/oneclient](https://polyfrost.org/projects/oneclient)
-as well as our [GitHub releases](https://github.com/Polyfrost/OneLauncher/releases/latest).
+Windows only for now. Download `Golem's Client_..._x64-setup.exe` from the
+[latest release](https://github.com/VenoServices11/golems-client/releases/tag/latest) and run it.
 
-| Windows (x86_64) | macOS (Intel & Apple Silicon) | Linux (x86_64)                                          |
-|------------------|-------------------------------|---------------------------------------------------------|
-| Installer 🔄      | DMG 🔄                        | AppImage 🔄                                             |
-|                  | App Bundle 🔄                 | DEB                                                     |
-|                  |                               | RPM                                                     |
-|                  |                               | *[RPM (COPR)](https://copr.fedorainfracloud.org/coprs/polyfrost/OneClient/) 🔄 |
-|                  |                               | [AUR](https://aur.archlinux.org/packages/oneclient-bin)|
-|                  |                               | Flatpak|
+## Privacy
 
-> 🔄 = Has support for autoupdating built-in
+Golem's Client sends no telemetry, analytics or crash reports. It talks to Microsoft, Xbox and Mojang to
+sign you in and download the game, to Modrinth for mods, to Polyfrost's public metadata server
+(`meta.polyfrost.org`) for game and loader version files, and to this GitHub repository for the
+launcher's own data (version list, mod bundles) and updates. Nothing is sent to Polyfrost's other
+services (Poly+, Sentry, telemetry): they are blocked in the launcher.
 
-<details>
+## Building
 
-<summary><h3>Flatpak Installation</h3></summary>
+The Windows installer is built by GitHub Actions (`.github/workflows/build.yml`) on every push, and
+builds from `main` are published to the `latest` release. Locally: `cargo build --release --bin oneclient_app`
+(Rust 1.97 or newer), then `cargo packager --release --formats nsis` from `packages/oneclient_app`.
 
-1. First, navigate to the folder the .flatpak was downloaded in (example: Downloads)
-```
-cd Downloads
-```
-2. Then you can install the package: (change filename with the one you downloaded)
-```
-flatpak install ./OneClient_2.10.2_linux_x86_64.flatpak 
-```
-</details>
-<details>
+The launcher's data files live on the `data` branch. The "Mirror launcher data" workflow made the
+first copy of them; edit them there.
 
-<summary><h3>COPR Installation</h3></summary>
+## Credits and licence
 
-On supported distributions (RHEL, Fedora, etc.), you can make use of the Fedora COPR instead of using the AppImage or manually installing the RPM file.
-1. First you have to enable the repository:
-```
-sudo dnf copr enable polyfrost/OneClient
-```
-2. Then you can install the package:
-```
-sudo dnf install oneclient-bin
-```
+Golem's Client is based on [OneClient / OneLauncher](https://github.com/Polyfrost/OneLauncher) by
+Polyfrost and contributors, and is licensed the same way, under the GNU General Public License v3.0
+only (see [LICENSE](./LICENSE) and [ATTRIBUTION.md](./ATTRIBUTION.md)). It is not made by or
+affiliated with Polyfrost, and it doesn't use Polyfrost's branding.
 
-</details>
-
-## Contributing
-
-We welcome contributions! Please read our [contributing guidelines](CONTRIBUTING.md) before getting started.
-
-
-### Requirements
-
-The project targets **Rust 1.97** or later. You can install Rust via [rustup](https://rustup.rs/).
-
-
-### Building & Running
-
-```sh
-# Run the app
-cargo run -p oneclient_app
-
-# Build a release binary
-cargo build -p oneclient_app --release
-```
-
-
-### Packaging / Releasing
-
-Installers are produced with [**cargo-packager**](https://github.com/crabnebula-dev/cargo-packager)
-(the standalone bundler spun out of the Tauri bundler). Config lives in
-[`packages/oneclient_app/Cargo.toml`](./packages/oneclient_app/Cargo.toml) under
-`[package.metadata.packager]`.
-
-```sh
-cargo install cargo-packager --locked
-
-# Build the binary, then bundle it for the current OS:
-cargo build --release -p oneclient_app
-cargo packager --release -p oneclient_app --formats <targets>
-#   Windows: nsis      macOS: app,dmg      Linux: deb,appimage
-```
-
-
-### Versioning
-
-The workspace shares a single version, defined in the root [`Cargo.toml`](./Cargo.toml) under `[workspace.package]`.
-
-Versions and release notes come from [Knope](https://knope.tech) change files in [`.changeset/`](./.changeset).
-Add one per user-facing change with `knope document-change` (installed via `cargo install knope`). The
-`OneClient Release Build` workflow consumes them, bumps the version, writes [`CHANGELOG.md`](./CHANGELOG.md),
-and uses the new entry as the GitHub release body, which is what the launcher's changelog page shows.
-
-
-## Code signing
-
-This program uses free code signing provided by [SignPath.io](https://signpath.io?utm_source=foundation&utm_medium=github&utm_campaign=0install), and a certificate by the [SignPath Foundation](https://signpath.org?utm_source=foundation&utm_medium=github&utm_campaign=0install). We thank them very much to their contributions to OSS software!
+Changes from OneClient, made by veno15 starting November 2026: the Golem's Client name, logo, colours
+and fonts; links; Polyfrost's online services, crash reporting, terms and translations removed;
+CurseForge hidden; Windows and Minecraft 1.21.11 only; the launcher's data served from this repository.

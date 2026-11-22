@@ -1,7 +1,9 @@
-pub const WINDOW_APP_ID: &str = "oneclient_app";
-pub const WINDOW_TITLE: &str = "OneClient";
+pub const WINDOW_APP_ID: &str = "golems_client";
+pub const WINDOW_TITLE: &str = "Golem's Client";
 
-pub const UPDATER_PUBKEY: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFGODk3MkMyMjg0MjFDMDUKUldRRkhFSW93bktKSHpkWjNEMXNzaDVINVpCTU8xSnhuK2RnV0dTZ2FkcFJWbG1zUkhGYTNjaUkK";
+/// Golem's Client's update signing key (cargo-packager / minisign). Empty until the key is made;
+/// the update check is skipped while it is, so no update is ever installed unsigned.
+pub const UPDATER_PUBKEY: &str = "";
 pub const UPDATER_ENDPOINT: &str =
-    "https://github.com/Polyfrost/OneLauncher/releases/latest/download/latest.json";
-pub const RELEASES_URL: &str = "https://github.com/Polyfrost/OneLauncher/releases/latest";
+    "https://github.com/VenoServices11/golems-client/releases/download/latest/latest.json";
+pub const RELEASES_URL: &str = "https://github.com/VenoServices11/golems-client/releases/tag/latest";
