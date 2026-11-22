@@ -1,0 +1,82 @@
+name: Build Golem's Client
+
+# Every push builds the Windows installer. Pushes to main also publish it on the
+# "latest" release, which is where testers download it from.
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+# Test builds use thin LTO: almost all of the speed, at a fraction of the build time.
+env:
+  CARGO_PROFILE_RELEASE_LTO: thin
+  CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          save-cache: true
+          restore-cache: true
+          cache-namespace: golems-cache
+
+      - name: Install cargo-packager
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          tool: cargo-packager
+          version: 0.11.8
+
+      - name: Build
+        shell: bash
+        run: cargo build --release --bin oneclient_app
+
+      - name: Stage the VC++ runtime next to the app
+        shell: bash
+        run: python3 distribution/windows/bundle-crt.py
+
+      - name: Make the installer
+        shell: bash
+        env:
+          CI: 'true'
+        run: cargo packager --release --formats nsis --verbose
+
+      - name: Collect
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp target/release/*-setup.exe dist/
+          ls -la dist
+
+      - name: Upload (test download for this run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: golems-client-windows
+          path: dist/*-setup.exe
+          retention-days: 3
+        continue-on-error: true
+
+      - name: Publish to the "latest" release
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! gh release view latest > /dev/null 2>&1; then
+            gh release create latest --title "Latest build" --notes "The newest Golem's Client test build." --prerelease
+          fi
+          for a in $(gh release view latest --json assets -q '.assets[].name'); do gh release delete-asset latest "$a" -y; done
+          gh release upload latest dist/*-setup.exe --clobber
+          gh release edit latest --notes "Golem's Client test build from ${GITHUB_SHA::7}."
