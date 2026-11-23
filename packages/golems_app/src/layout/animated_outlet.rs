@@ -31,6 +31,7 @@ fn is_sidebar_route(route: &Route) -> bool {
             | Route::SettingsLanguage {}
             | Route::SettingsDeveloper {}
             | Route::SettingsChangelog {}
+            | Route::SettingsOwner {}
     )
 }
 

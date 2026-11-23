@@ -8,6 +8,7 @@ mod java;
 mod language;
 mod launcher;
 mod minecraft;
+mod owner;
 mod storage;
 mod theme_editor;
 
@@ -23,6 +24,7 @@ pub use java::SettingsJava;
 pub use language::SettingsLanguage;
 pub use launcher::SettingsLauncher;
 pub use minecraft::SettingsMinecraft;
+pub use owner::SettingsOwner;
 pub use storage::SettingsStorage;
 pub use theme_editor::SettingsThemeEditor;
 

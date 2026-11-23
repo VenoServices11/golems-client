@@ -209,6 +209,7 @@ pub fn run_startup_tasks(state: &Arc<LauncherState>) {
 
 pub async fn shutdown(state: &LauncherState) {
     tracing::info!("shutting the launcher down");
+    crate::stats::leave(state).await;
     state.discord.shutdown();
     state.services.db.close().await;
 }

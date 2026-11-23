@@ -82,6 +82,7 @@ pub enum SettingsTab {
     Language,
     DeveloperOptions,
     Changelog,
+    Owner,
 }
 
 impl SettingsTab {
@@ -97,6 +98,7 @@ impl SettingsTab {
             Self::Language => t("golems.layout.settings.tab.language"),
             Self::DeveloperOptions => t("golems.layout.settings.tab.developer"),
             Self::Changelog => t("golems.layout.settings.tab.changelog"),
+            Self::Owner => "Owner",
         }
     }
 
@@ -112,6 +114,7 @@ impl SettingsTab {
             Self::Language => IconType::Globe01,
             Self::DeveloperOptions => IconType::CodeSnippet02,
             Self::Changelog => IconType::RefreshCcw02,
+            Self::Owner => IconType::Users01,
         }
     }
 
@@ -127,6 +130,7 @@ impl SettingsTab {
             Self::Language => Some(Route::SettingsLanguage {}),
             Self::DeveloperOptions => Some(Route::SettingsDeveloper {}),
             Self::Changelog => Some(Route::SettingsChangelog {}),
+            Self::Owner => Some(Route::SettingsOwner {}),
         }
     }
 }
@@ -174,6 +178,7 @@ fn route_tab(route: &Route) -> SettingsTab {
         Route::SettingsLanguage {} => SettingsTab::Language,
         Route::SettingsDeveloper {} => SettingsTab::DeveloperOptions,
         Route::SettingsChangelog {} => SettingsTab::Changelog,
+        Route::SettingsOwner {} => SettingsTab::Owner,
         _ => SettingsTab::Appearance,
     }
 }
@@ -184,6 +189,7 @@ impl Component for SettingsShell {
         let active = route_tab(&route);
 
         let changelog_unread = has_unread_changelog();
+        let owner = signed_in_as_owner();
 
         let search = use_state(String::new);
         let header_width = use_state(|| 0f32);
@@ -226,7 +232,7 @@ impl Component for SettingsShell {
             .overflow(Overflow::Clip)
             .padding(Gaps::new(0., 40., 40., 32.))
             .spacing(40.)
-            .child(sidebar(active, changelog_unread))
+            .child(sidebar(active, changelog_unread, owner))
             .child(
                 rect()
                     .vertical()
@@ -434,6 +440,14 @@ fn search_results(query: &SearchQuery, mut search: State<String>) -> Vec<Element
     out
 }
 
+/// Signed in as the owner (emeraldgolem3): shows the Owner tab
+fn signed_in_as_owner() -> bool {
+    let query = crate::hooks::use_current_account();
+    crate::hooks::try_default_account(&query).is_some_and(|account| {
+        account.id.simple().to_string() == golems_common::constants::OWNER_UUID
+    })
+}
+
 /// False while the changelog is loading or failed rather than guessing
 fn has_unread_changelog() -> bool {
     let settings = use_settings_snapshot().settings;
@@ -445,7 +459,7 @@ fn has_unread_changelog() -> bool {
     }
 }
 
-fn sidebar(active: SettingsTab, changelog_unread: bool) -> impl IntoElement {
+fn sidebar(active: SettingsTab, changelog_unread: bool, owner: bool) -> impl IntoElement {
     rect()
         .vertical()
         .width(Size::px(SIDEBAR_WIDTH_PX))
@@ -459,7 +473,10 @@ fn sidebar(active: SettingsTab, changelog_unread: bool) -> impl IntoElement {
                 .width(Size::fill())
                 .height(Size::flex(1.0))
                 .spacing(16.)
-                .children(groups().into_iter().map(|group| {
+                .children(groups().into_iter().chain(owner.then(|| SettingsGroup {
+                    label: "Owner",
+                    tabs: &[SettingsTab::Owner],
+                })).map(|group| {
                     rect()
                         .vertical()
                         .width(Size::fill())

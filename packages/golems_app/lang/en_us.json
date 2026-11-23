@@ -1980,6 +1980,7 @@
   "golems.onboarding.account.signing_in": "Signing in...",
   "golems.onboarding.account.subtitle": "Before you continue, we require you to own a copy of Minecraft: Java Edition.",
   "golems.onboarding.account.skip": "Skip for now",
+  "golems.onboarding.account.stats_notice": "While Golem's Client is open, it shares your Minecraft username, launcher version and whether you're playing (with the instance name) with veno15, so they can see how many people use it. Your login, email and files are never shared.",
   "golems.onboarding.account.title": "Account",
   "golems.onboarding.bundles.empty": "No optional bundles available",
   "golems.onboarding.bundles.extras": "Try out these additional mods:",

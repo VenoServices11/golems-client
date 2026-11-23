@@ -28,6 +28,10 @@ pub const PLUS_BACKEND_URL: &str = "";
 pub const CRASH_DATA_URL: &str =
     "https://raw.githubusercontent.com/VenoServices11/golems-client/data/golems/crashes.json";
 
+/// Golem's Client's own server: user stats (and the old Golem's Utils mod's presence)
+pub const PRESENCE_URL: &str = "https://c418-presence.c418client.workers.dev";
+/// emeraldgolem3, the owner: sees the Owner tab
+pub const OWNER_UUID: &str = "dabe852b94dd4bb9b18d151c206be824";
 pub const DISCORD_URL: &str = "https://discord.gg/q67qzHG2kf";
 pub const TIKTOK_URL: &str = "https://www.tiktok.com/@holygrajl";
 pub const GITHUB_URL: &str = "https://github.com/VenoServices11/golems-client";

@@ -20,7 +20,7 @@ use crate::view::{
         settings::{
             SettingsAccounts, SettingsApis, SettingsAppearance, SettingsChangelog,
             SettingsDeveloper, SettingsJava, SettingsLanguage, SettingsLauncher, SettingsMinecraft,
-            SettingsStorage, SettingsThemeEditor,
+            SettingsOwner, SettingsStorage, SettingsThemeEditor,
         },
     },
     onboarding::{
@@ -128,6 +128,8 @@ pub enum Route {
                 SettingsDeveloper {},
                 #[route("/app/settings/changelog")]
                 SettingsChangelog {},
+                #[route("/app/settings/owner")]
+                SettingsOwner {},
                 // #[route("/app/settings/feedback")]
                 // SettingsFeedback {},
             #[end_layout]
@@ -179,6 +181,7 @@ impl Route {
             Route::SettingsLanguage { .. } => t("golems.routes.settings_language"),
             Route::SettingsDeveloper { .. } => t("golems.routes.settings_developer"),
             Route::SettingsChangelog { .. } => t("golems.routes.settings_changelog"),
+            Route::SettingsOwner { .. } => "Owner",
             // Route::SettingsFeedback { .. } => "Feedback".to_string(),
             Route::NotFound { .. } => t("golems.routes.not_found"),
         };

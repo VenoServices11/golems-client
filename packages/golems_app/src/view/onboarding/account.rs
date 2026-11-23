@@ -47,6 +47,12 @@ impl Component for OnboardingAccount {
                         .into_element()
                 }
             })
+            .child(
+                label()
+                    .text(t("golems.onboarding.account.stats_notice"))
+                    .font_size(text_size(12.))
+                    .color(colors::fg_secondary()),
+            )
             .into_element();
 
         let page = onboarding_page(

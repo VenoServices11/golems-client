@@ -511,6 +511,7 @@ pub async fn start_launcher(
         state.services.events.clone(),
     );
     golems_core::run_startup_tasks(&state);
+    golems_core::stats::start(std::sync::Arc::clone(&state));
 
     let data_dir = golems_common::paths::data_dir()
         .map(|p| p.display().to_string())

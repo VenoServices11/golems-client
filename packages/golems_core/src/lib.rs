@@ -18,6 +18,7 @@ pub mod relocate;
 pub mod reporting;
 pub mod settings;
 pub mod sharing;
+pub mod stats;
 pub mod simulate;
 mod state;
 pub mod storage;
