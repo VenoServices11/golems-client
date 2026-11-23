@@ -1,4 +1,5 @@
 use freya::prelude::*;
+use freya::router::RouterContext;
 use golems_auth::MinecraftAccount;
 
 use crate::components::{Avatar, Button, Icon, IconType, use_microsoft_login};
@@ -10,7 +11,8 @@ use crate::i18n::t;
 use crate::routes::Route;
 use crate::theme::{colors, text_size};
 use crate::view::onboarding::{
-    onboarding_illustration, onboarding_nav, onboarding_page, step_before_account, step_heading,
+    onboarding_illustration, onboarding_nav_action, onboarding_page, step_before_account,
+    step_heading,
 };
 
 #[derive(PartialEq)]
@@ -50,10 +52,19 @@ impl Component for OnboardingAccount {
         let page = onboarding_page(
             onboarding_illustration(IconType::OnboardingAccount),
             content,
-            onboarding_nav(
+            // Signing in can wait (for example until Mojang approves the app): without an account the
+            // button skips ahead, and the account is added later from Settings
+            onboarding_nav_action(
                 Some(back),
-                Route::OnboardingBundles {},
-                has_account,
+                if has_account {
+                    t("golems.common.next")
+                } else {
+                    t("golems.onboarding.account.skip")
+                },
+                true,
+                move |()| {
+                    let _ = RouterContext::get().replace(Route::OnboardingBundles {});
+                },
             ),
         );
 
