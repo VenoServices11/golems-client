@@ -35,3 +35,5 @@ builds from `main` are published to the `latest` release. Locally: `cargo build 
 (Rust 1.97 or newer), then `cargo packager --release --formats nsis` from `packages/golems_app`.
 
 The launcher's data files live on the `data` branch: edit them there.
+
+The server for user stats is in [`server/`](./server): it deploys to Cloudflare by itself when it changes.

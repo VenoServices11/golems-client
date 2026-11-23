@@ -1,0 +1,11 @@
+name = "c418-presence"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "c418-presence"
+database_id = "8e110578-f7a0-4387-aad1-367f5f0e6b12"
+
+[triggers]
+crons = ["*/15 * * * *"]
