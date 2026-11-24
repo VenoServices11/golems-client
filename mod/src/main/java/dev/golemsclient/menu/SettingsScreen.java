@@ -506,7 +506,7 @@ public final class SettingsScreen extends MenuScreen {
     }
 
     private void slider(Row r, float x0, float cy, float x1, double p, String label, boolean enabled) {
-        float vw = Math.max(34f, Math.min(60f, textW(Face.MONO, label, 6f) + 6f));
+        float vw = 60f;
         float tx0 = x0 + 4f, tx1 = x1 - vw - 6f;
         rect(tx0, cy - 1f, tx1, cy + 1f, 1f, 0x26FFFFFF);
         float kx = tx0 + (tx1 - tx0) * (float) p;

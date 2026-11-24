@@ -182,7 +182,7 @@ final class OptionValues {
         try {
             Object tooltip = ((OptionInstanceAccessor) (Object) option).golemsclient$tooltip().apply(option.get());
             if (tooltip == null) return null;
-            String s = ((TooltipAccessor) tooltip).golemsclient$message().getString();
+            String s = ((TooltipAccessor) tooltip).golemsclient$message().getString().replaceAll("\\s*\\R\\s*", " ").trim();
             return s.isBlank() ? null : s;
         } catch (RuntimeException e) {
             return null;
