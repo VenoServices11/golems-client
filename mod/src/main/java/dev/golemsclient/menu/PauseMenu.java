@@ -178,7 +178,16 @@ public final class PauseMenu extends MenuScreen {
         page = next;
         moreOpen = false;
         customizeOpen = false;
-        if (page == 1) wardrobe.open();
+        if (page == 1) {
+            wardrobe.open();
+            // Step back: the camera glides back while the Wardrobe shows your player model instead
+            if (staged) {
+                PauseBridge.leave();
+                staged = false;
+            }
+        } else if (stepBack()) {
+            staged = PauseBridge.enter();
+        }
     }
 
     // ------------------------------------------------------------------ the menu (right)
