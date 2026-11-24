@@ -1,6 +1,0 @@
-# Built-in lobby scenes: id;name;season[;time of day]
-# Automatic shows the season's scene. Made by the "Make lobby scenes" workflow (SceneMaker).
-snowy_village;Snowy village;winter
-cherry_grove;Cherry grove;spring
-desert_village;Desert village;summer
-plains_village;Plains village;autumn;11800

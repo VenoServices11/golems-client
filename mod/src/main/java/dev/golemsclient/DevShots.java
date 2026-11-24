@@ -1,6 +1,7 @@
 package dev.golemsclient;
 
 import dev.golemsclient.menu.MainMenu;
+import dev.golemsclient.oc.LobbyBridge;
 import dev.golemsclient.menu.MenuData;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
@@ -43,19 +44,21 @@ public final class DevShots {
         MenuData.played("Hypixel", "mc.hypixel.net");
         MenuData.played("DonutSMP", "donutsmp.net");
         dev.golemsclient.menu.Announcement.devFake("Live tonight at 8 PM on TikTok!");
-        step("00_startup", () -> { }, 300, () -> dev.golemsclient.lobby.Lobby.phase() == dev.golemsclient.lobby.Lobby.Phase.LOADING);
-        step("01_reveal", () -> { }, 1300, () -> dev.golemsclient.lobby.Lobby.phase() == dev.golemsclient.lobby.Lobby.Phase.REVEAL);
-        step("02_lobby_menu", () -> { }, 3500, () -> mc.screen instanceof MainMenu);
+        // OneClient's startup over the loading screen, the scene revealing itself, then the menu over it
+        step("00_startup", () -> { }, 200, () -> mc.isGameLoadFinished() && LobbyBridge.startupActive());
+        step("01_reveal", () -> { }, 700, () -> LobbyBridge.showing() && LobbyBridge.introPlaying());
+        step("02_lobby_menu", () -> { }, 1500, () -> mc.screen instanceof MainMenu && LobbyBridge.showing()
+                && LobbyBridge.panelAlpha() >= 0.99f && !LobbyBridge.startupActive());
         step("03_social", () -> MainMenu.devSocial(true), 1200, null);
         step("04_tab_toast", () -> {
             MainMenu.devSocial(false);
             MainMenu.devTab(1);
         }, 900, null);
         step("05_in_world", DevShots::createWorld, 3000,
-                () -> mc.player != null && mc.level != null && mc.getOverlay() == null && mc.screen == null && !dev.golemsclient.lobby.Lobby.active());
+                () -> mc.player != null && mc.level != null && mc.getOverlay() == null && mc.screen == null);
         step("06_pause_menu", () -> mc.pauseGame(false), 1500, null);
         step("07_lobby_again", () -> mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), 3500,
-                () -> mc.screen instanceof MainMenu && dev.golemsclient.lobby.Lobby.active());
+                () -> mc.screen instanceof MainMenu && LobbyBridge.showing() && LobbyBridge.panelAlpha() >= 0.99f);
         ClientTickEvents.END_CLIENT_TICK.register(DevShots::tick);
         // if a step hangs, write every thread's stack to the log (once)
         Thread watchdog = new Thread(() -> {
@@ -108,7 +111,8 @@ public final class DevShots {
     private static void tick(Minecraft mc) {
         long now = System.currentTimeMillis();
         if (index < 0) {
-            if (mc.getOverlay() != null) return;
+            // the steps start once the game has loaded (OneClient's startup keeps the loading overlay up a little longer)
+            if (mc.getOverlay() != null && !mc.isGameLoadFinished()) return;
             index = 0;
             stepAt = now;
             run(0);
@@ -140,12 +144,6 @@ public final class DevShots {
 
     /** Right after the overlay drew into the window: saves the frame if a shot is due, then runs the next step. */
     public static void afterFrame() {
-        if (SceneMaker.ON && SceneMaker.pendingShot != null) {
-            String id = SceneMaker.pendingShot;
-            SceneMaker.pendingShot = null;
-            save(Minecraft.getInstance().gameDirectory.toPath().resolve("scenes").resolve(id + ".png"));
-            return;
-        }
         if (!ON || pendingShot == null) return;
         String name = pendingShot;
         pendingShot = null;

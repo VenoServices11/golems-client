@@ -3,6 +3,7 @@ package dev.golemsclient.menu;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.golemsclient.GolemsClient;
 import dev.golemsclient.media.MediaSession;
+import dev.golemsclient.oc.LobbyBridge;
 import dev.golemsclient.media.NowPlaying;
 import dev.golemsclient.render.Overlay;
 import dev.golemsclient.render.Overlay.Align;
@@ -75,6 +76,13 @@ public final class MainMenu extends MenuScreen {
     private float playerPitch = -4f;
     private boolean dragging;
     private float tabX = -1f, tabW;
+    // where OneClient's startup animation ends (GUI pixels: x, y, width, height)
+    private float[] startupMark, startupWord, startupLine;
+    // pressing on your player in the scene: a short hold or a drag picks it up, a click makes it react
+    private boolean pressingPlayer, grabbing;
+    private long pressedAt;
+    private double pressX, pressY;
+    private float sceneScroll;
     private boolean socialOpen;
     private boolean lobbyPanel;
     private boolean draggingVolume;
@@ -118,6 +126,12 @@ public final class MainMenu extends MenuScreen {
             worldsLoaded = true;
             loadWorlds();
         }
+        LobbyBridge.arrive();
+    }
+
+    /** Whether OneClient's lobby (the scene behind the menu) is in use. */
+    private static boolean lobby() {
+        return !LobbyBridge.cannotRun();
     }
 
     private void loadWorlds() {
@@ -137,6 +151,7 @@ public final class MainMenu extends MenuScreen {
     @Override
     public void tick() {
         if (ping != null) ping.tick();
+        if (pressingPlayer && !grabbing && System.currentTimeMillis() - pressedAt >= 250L) grabbing = LobbyBridge.grab(pressX, pressY);
     }
 
     @Override
@@ -164,10 +179,15 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        if (dev.golemsclient.lobby.Lobby.active()) {
-            // the lobby world is behind: only a soft shade at the top and bottom
-            g.fillGradient(0, 0, width, height / 4, 0x99000000, 0x00000000);
-            g.fillGradient(0, height * 3 / 5, width, height, 0x00000000, 0x80000000);
+        if (lobby()) {
+            // OneClient's lobby draws the scene behind the menu (no world is loaded); until it shows, a plain page
+            if (!LobbyBridge.frame()) {
+                g.fill(0, 0, width, height, GolemsClient.BACKGROUND);
+                return;
+            }
+            // only a soft shade at the top and bottom, so the bar and the cards read well
+            g.fillGradient(0, 0, width, height / 4, 0x80000000, 0x00000000);
+            g.fillGradient(0, height * 3 / 5, width, height, 0x00000000, 0x66000000);
             return;
         }
         renderPanorama(g, partialTick);
@@ -183,6 +203,9 @@ public final class MainMenu extends MenuScreen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         beginFrame(g, mouseX, mouseY);
+        // the panels fade in as the scene finishes revealing itself, and out while the camera leaves it
+        if (lobby()) fade = Math.min(fade, LobbyBridge.panelAlpha());
+        LobbyBridge.accent(ACCENT);
         if (dev.golemsclient.DevShots.ON) {
             socialOpen = devSocial;
             if (devTab >= 0) {
@@ -196,11 +219,13 @@ public final class MainMenu extends MenuScreen {
         drawTopBar();
         drawAnnouncement();
         drawLeft();
-        if (lobbyPanel && (dev.golemsclient.lobby.Lobby.active() || !data.lobbyEnabled)) drawLobbyPanel();
+        if (lobbyPanel && lobby()) drawLobbyPanel();
         else drawPlayCard();
         drawFooter();
         if (socialOpen) drawSocial();
         endFrame(g);
+        // OneClient's startup: the logo over the loading screen flies into the top bar as the scene appears
+        LobbyBridge.startupFrame(g);
     }
 
     @Override
@@ -218,13 +243,12 @@ public final class MainMenu extends MenuScreen {
 
     /** Where your player is on screen (units): in the lobby, the real one in the world. */
     private float[] playerBox() {
-        if (dev.golemsclient.lobby.Lobby.active() && minecraft.player != null) {
-            var pos = minecraft.player.getPosition(minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(true));
-            float[] feet = dev.golemsclient.lobby.Lobby.project(pos);
-            float[] head = dev.golemsclient.lobby.Lobby.project(pos.add(0, 1.95, 0));
-            if (feet != null && head != null && feet[1] > head[1]) {
-                float ph = (feet[1] - head[1]) / u, pw = ph * 0.6f, cx = head[0] / u;
-                return new float[] {cx - pw / 2f, head[1] / u, cx + pw / 2f, feet[1] / u};
+        if (lobby()) {
+            // the scene's player: its name tag marks where it is
+            LobbyBridge.Tag tag = localTag();
+            if (tag != null) {
+                float cx = tag.x / u, top = tag.y / u + 6f, ph = 70f;
+                return new float[] {cx - ph * 0.3f, top, cx + ph * 0.3f, top + ph};
             }
         }
         float ph = Math.min(H * 0.42f, 200f);
@@ -235,15 +259,13 @@ public final class MainMenu extends MenuScreen {
 
     private void drawPlayer(GuiGraphics g) {
         float[] b = playerBox();
-        if (dev.golemsclient.lobby.Lobby.active()) {
-            // the real you stands in the world: look toward the mouse, and the nametag over your head
-            float cx = (b[0] + b[2]) / 2f, headY = b[1] + (b[3] - b[1]) * 0.1f;
-            if (!dragging && !socialOpen) {
-                dev.golemsclient.lobby.LobbyInput.lookYaw = -clamp((mx - cx) / w * 80f, -40f, 40f);
-                dev.golemsclient.lobby.LobbyInput.lookPitch = clamp((my - headY) / H * 50f, -30f, 30f);
+        if (lobby()) {
+            // the players stand in the scene (they look at the mouse themselves): a name tag over each
+            var window = minecraft.getWindow();
+            for (LobbyBridge.Tag tag : LobbyBridge.tags(window.getGuiScaledWidth(), window.getGuiScaledHeight())) {
+                tagAt(tag.name, tag.x / u, tag.y / u, tag.local);
             }
-            nametag(cx, b[1]);
-            if (inside(b[0], b[1], b[2], b[3])) pointer = true;
+            if (!socialOpen && !grabbing && LobbyBridge.touches(mx * u / width, my * u / height)) pointer = true;
             return;
         }
         PlayerSkin s = skin().get();
@@ -271,6 +293,26 @@ public final class MainMenu extends MenuScreen {
         if (inside(b[0], b[1], b[2], b[3])) pointer = true;
     }
 
+    private LobbyBridge.Tag localTag() {
+        var window = minecraft.getWindow();
+        for (LobbyBridge.Tag tag : LobbyBridge.tags(window.getGuiScaledWidth(), window.getGuiScaledHeight())) {
+            if (tag.local) return tag;
+        }
+        return null;
+    }
+
+    /** A name tag in the scene, its bottom middle at (cx, bottom) in units; "You" on yours. */
+    private void tagAt(String name, float cx, float bottom, boolean local) {
+        float nameSize = 8f, youSize = 6.5f;
+        float nw = textW(Face.SEMIBOLD, name, nameSize), yw = local ? textW(Face.MEDIUM, "You", youSize) + 5f : 0f;
+        float tw = nw + yw + 14f, ty = bottom - 16f;
+        boolean focused = name.equals(LobbyBridge.focused());
+        rect(cx - tw / 2f, ty, cx + tw / 2f, ty + 16f, 4f, 0xB40E0E10);
+        outline(cx - tw / 2f, ty, cx + tw / 2f, ty + 16f, 4f, local || focused ? alpha(ACCENT, 0.8f) : LINE);
+        text(Face.SEMIBOLD, name, cx - tw / 2f + 7f, ty + 8f - nameSize * 0.6f, nameSize, TEXT, Align.LEFT);
+        if (local) text(Face.MEDIUM, "You", cx + tw / 2f - 7f, ty + 8f - youSize * 0.6f, youSize, TEXT_2, Align.RIGHT);
+    }
+
     /** Your name in a small pill over your head (top = the top of your head, units). */
     private void nametag(float cx, float top) {
         String name = minecraft.getUser().getName();
@@ -286,9 +328,10 @@ public final class MainMenu extends MenuScreen {
     private void drawSplash(GuiGraphics g) {
         if (minecraft.options.hideSplashTexts().get()) return;
         float[] b = playerBox();
-        if (dev.golemsclient.lobby.Lobby.active()) {
-            float cx = (b[0] + b[2]) / 2f;
-            splash.draw(g, (cx + 100f) * u, (b[1] + 8f) * u, u, fade);
+        if (lobby()) {
+            LobbyBridge.Tag tag = localTag();
+            if (tag == null) return;
+            splash.draw(g, (tag.x / u + 100f) * u, (tag.y / u + 14f) * u, u, fade);
             return;
         }
         splash.draw(g, (b[2] + (b[2] - b[0]) * 0.62f) * u, (b[1] + (b[3] - b[1]) * 0.02f) * u, u, fade);
@@ -303,6 +346,8 @@ public final class MainMenu extends MenuScreen {
         float nameH = 8.5f, nameW = nameH * (1130f / 128f);
         Overlay.image("/assets/golemsclient/textures/wordmark.png", (PAD + 25f) * u, (y + 9f - nameH / 2f) * u,
                 (PAD + 25f + nameW) * u, (y + 9f + nameH / 2f) * u, c(TEXT));
+        startupMark = new float[] {PAD * u, y * u, 18f * u, 18f * u};
+        startupWord = new float[] {(PAD + 25f) * u, (y + 9f - nameH / 2f) * u, nameW * u, nameH * u};
 
         // tabs
         float size = 8.5f, gap = 22f;
@@ -330,6 +375,9 @@ public final class MainMenu extends MenuScreen {
             x += tw + gap;
         }
         rect(tabX, y + 18f, tabX + tabW, y + 19.5f, 0.75f, ACCENT);
+        // where OneClient's startup logo, name and line land: our logo, name and the Play tab's underline
+        startupLine = new float[] {tabX * u, (y + 18f) * u, tabW * u, 1.5f * u};
+        if (startupMark != null) LobbyBridge.startupTargets(width, startupMark, startupWord, startupLine);
 
         // account, then quick buttons to its left
         float head = 18f;
@@ -340,9 +388,7 @@ public final class MainMenu extends MenuScreen {
         float ix = hx - 8f - textW(Face.SEMIBOLD, name, 8.5f) - 18f;
         ix = iconButton("quit", ix, y + 9f, "Quit game", () -> minecraft.stop());
         ix = iconButton("settings", ix, y + 9f, "Options", () -> minecraft.setScreen(new OptionsScreen(this, minecraft.options)));
-        if (dev.golemsclient.lobby.Lobby.active() || !data.lobbyEnabled) {
-            ix = iconButton("image", ix, y + 9f, "Customize your lobby", () -> lobbyPanel = !lobbyPanel);
-        }
+        if (lobby()) ix = iconButton("image", ix, y + 9f, "Customize your lobby", () -> lobbyPanel = !lobbyPanel);
         ix = iconButton("cloud", ix, y + 9f, "Realms", () -> minecraft.setScreen(new com.mojang.realmsclient.RealmsMainScreen(this)));
         Announcement.Post post = Announcement.get();
         if (post != null && post.id().equals(data.dismissedAnnouncement)) {
@@ -457,6 +503,8 @@ public final class MainMenu extends MenuScreen {
             option.set(0.0);
         }
         minecraft.options.save();
+        // the lobby's own music too
+        LobbyBridge.setMusicMuted(data.mutedMusicVolume >= 0);
         data.save();
     }
 
@@ -474,66 +522,103 @@ public final class MainMenu extends MenuScreen {
         closeButton(x1 - 18f, y + 5f, () -> lobbyPanel = false);
         y += 22f;
 
-        MenuData d = data;
+        // the scene: Automatic, the built-in ones, then the places you've played (scrolls when there are many)
         label("SCENE", x, y);
         y += 10f;
-        List<dev.golemsclient.lobby.Scenes.Entry> scenes = dev.golemsclient.lobby.Scenes.all();
-        y = option(x, y, iw, "Automatic", "The season's scene", "auto".equals(d.lobbyScene), () -> setScene("auto"));
-        for (var e : scenes.subList(0, Math.min(scenes.size(), 7))) {
-            String sub = e.builtIn() ? (e.season().isEmpty() ? "Built in" : "Built in \u00b7 " + e.season()) : "Captured on a server";
-            y = option(x, y, iw, e.name(), sub, e.id().equals(d.lobbyScene), () -> setScene(e.id()));
+        List<LobbyBridge.Scene> scenes = LobbyBridge.scenes();
+        String picked = LobbyBridge.pickedScene();
+        int rows = 4, count = scenes.size() + 1;
+        float rowH = 27f, listH = Math.min(count, rows) * rowH;
+        sceneListY0 = y;
+        sceneListY1 = y + listH;
+        sceneScroll = clamp(sceneScroll, 0f, Math.max(0f, count - rows));
+        int first = (int) sceneScroll;
+        for (int i = first; i < Math.min(count, first + rows); i++) {
+            if (i == 0) {
+                y = option(x, y, iw, "Automatic", "A different scene each time", picked == null, () -> LobbyBridge.pickScene(null));
+            } else {
+                LobbyBridge.Scene e = scenes.get(i - 1);
+                String sub = e.builtIn ? "Built in" : "From a place you played";
+                if (e.id.equals(LobbyBridge.currentScene())) sub += " \u00b7 showing now";
+                y = option(x, y, iw, e.name, sub, e.id.equals(picked), () -> LobbyBridge.pickScene(e.id));
+            }
         }
-        y += 6f;
+        if (count > rows) {
+            // a thin scrollbar beside the list
+            float track = listH - 3f, bar = track * rows / count, at = track * first / count;
+            rect(x1 - 6f, sceneListY0 + at, x1 - 4.5f, sceneListY0 + at + bar, 0.75f, 0x40FFFFFF);
+        }
+        y = sceneListY0 + listH + 6f;
+
         label("TIME OF DAY", x, y);
         y += 10f;
-        String[][] times = {{"scene", "Scene"}, {"day", "Day"}, {"sunset", "Sunset"}, {"night", "Night"}, {"real", "Clock"}};
-        float cw = (iw - 4f * 3f) / 5f;
-        for (int i = 0; i < times.length; i++) {
-            String id = times[i][0];
-            chip(x + i * (cw + 3f), y, cw, times[i][1], id.equals(d.lobbyTime), () -> {
-                d.lobbyTime = id;
-                d.save();
-                dev.golemsclient.lobby.Lobby.applyTime();
-            });
-        }
-        y += 24f;
+        y = chips(x, y, iw, new Object[] {dev.golemsclient.oc.client.lobby.LobbyTime.CAPTURED, dev.golemsclient.oc.client.lobby.LobbyTime.DAY,
+                dev.golemsclient.oc.client.lobby.LobbyTime.SUNSET, dev.golemsclient.oc.client.lobby.LobbyTime.NIGHT,
+                dev.golemsclient.oc.client.lobby.LobbyTime.REAL}, new String[] {"Scene", "Day", "Sunset", "Night", "Clock"},
+                LobbyBridge.time(), v -> LobbyBridge.setTime((dev.golemsclient.oc.client.lobby.LobbyTime) v));
+
+        label("OPENING", x, y);
+        y += 10f;
+        y = chips(x, y, iw, LobbyBridge.reveals(), new String[] {"Random", "Wave", "Focus pull", "First light"},
+                LobbyBridge.reveal(), v -> LobbyBridge.setReveal((dev.golemsclient.oc.client.lobby.LobbyReveal) v));
+
+        // music: which track (arrows step through them) and how loud
         label("MUSIC", x, y);
         y += 10f;
-        var music = minecraft.options.getSoundSourceOptionInstance(SoundSource.MUSIC);
+        var musics = LobbyBridge.musics();
+        var music = LobbyBridge.music();
+        int mi = java.util.Arrays.asList(musics).indexOf(music);
+        rect(x, y, x + iw, y + 18f, 4f, 0x0FFFFFFF);
+        text(Face.MEDIUM, music.toString(), x + iw / 2f, y + 9f - 7f * 0.6f, 7f, TEXT, Align.CENTER);
+        smallArrow(x + 9f, y + 9f, false, () -> LobbyBridge.setMusic(musics[(mi + musics.length - 1) % musics.length]));
+        smallArrow(x + iw - 9f, y + 9f, true, () -> LobbyBridge.setMusic(musics[(mi + 1) % musics.length]));
+        y += 24f;
         volumeX0 = x;
         volumeX1 = x + iw - 34f;
-        float v = (float) (double) music.get();
+        float v = LobbyBridge.musicVolume();
         rect(volumeX0, y + 5f, volumeX1, y + 7f, 1f, 0x26FFFFFF);
         rect(volumeX0, y + 5f, volumeX0 + (volumeX1 - volumeX0) * v, y + 7f, 1f, ACCENT);
-        Overlay.circle((volumeX0 + (volumeX1 - volumeX0) * v) * u, (y + 6f) * u, 4f * u, c(0xFFFFFFFF));
+        Overlay.rect((volumeX0 + (volumeX1 - volumeX0) * v - 3.5f) * u, (y + 2.5f) * u, (volumeX0 + (volumeX1 - volumeX0) * v + 3.5f) * u,
+                (y + 9.5f) * u, 0f, c(0xFFFFFFFF));
         text(Face.MONO, Math.round(v * 100) + "%", x + iw, y + 2f, 6.5f, TEXT_2, Align.RIGHT);
         hit(volumeX0 - 4f, y - 2f, volumeX1 + 4f, y + 14f, () -> {
             draggingVolume = true;
-            double nv = Math.max(0.0, Math.min(1.0, (mx - volumeX0) / Math.max(1f, volumeX1 - volumeX0)));
-            minecraft.options.getSoundSourceOptionInstance(SoundSource.MUSIC).set(nv);
+            LobbyBridge.setMusicVolume(clamp((mx - volumeX0) / Math.max(1f, volumeX1 - volumeX0), 0f, 1f));
         });
-        y += 22f;
-        y = toggle(x, y, iw, "Opening animation", "The camera swoops in and you run in", d.lobbyOpening, () -> {
-            d.lobbyOpening = !d.lobbyOpening;
-            d.save();
-        });
-        y = toggle(x, y, iw, "Save scenes from servers", "When you leave a server, its spot becomes a scene", d.captureScenes, () -> {
-            d.captureScenes = !d.captureScenes;
-            d.save();
-        });
-        toggle(x, y, iw, "Lobby", "Turn off for a plain background", d.lobbyEnabled, () -> {
-            d.lobbyEnabled = !d.lobbyEnabled;
-            d.save();
-            if (!d.lobbyEnabled) dev.golemsclient.lobby.Lobby.turnOff();
-            else dev.golemsclient.lobby.Lobby.restart();
-        });
+        y += 20f;
+
+        toggle(x, y, iw, "Save scenes from places you play", "Your lobby can show the spots you've been", LobbyBridge.capturing(),
+                () -> LobbyBridge.setCapturing(!LobbyBridge.capturing()));
     }
 
-    private void setScene(String id) {
-        if (id.equals(data.lobbyScene)) return;
-        data.lobbyScene = id;
-        data.save();
-        dev.golemsclient.lobby.Lobby.restart();
+    private float sceneListY0, sceneListY1;
+
+    /** A row of choices (one per value), the current one filled. Returns the y below it. */
+    private float chips(float x, float y, float iw, Object[] values, String[] labels, Object current, java.util.function.Consumer<Object> pick) {
+        int n = values.length;
+        float cw = (iw - 3f * (n - 1)) / n;
+        for (int i = 0; i < n; i++) {
+            Object value = values[i];
+            chip(x + i * (cw + 3f), y, cw, labels[i], value == current, () -> pick.accept(value));
+        }
+        return y + 24f;
+    }
+
+    private void smallArrow(float cx, float cy, boolean right, Runnable action) {
+        boolean over = inside(cx - 8f, cy - 8f, cx + 8f, cy + 8f);
+        float hv = anim("arrow:" + right, over);
+        Overlay.icon(right ? "next" : "prev", (cx - 4f) * u, (cy - 4f) * u, 8f * u, c(mix(TEXT_2, TEXT, hv)));
+        hit(cx - 8f, cy - 8f, cx + 8f, cy + 8f, action);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        float y = (float) mouseY / u;
+        if (lobbyPanel && y >= sceneListY0 && y < sceneListY1) {
+            sceneScroll -= (float) scrollY;
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private void label(String s, float x, float y) {
@@ -769,7 +854,8 @@ public final class MainMenu extends MenuScreen {
         ServerData info = ping.show(server.name, server.ip);
         ServerData target = new ServerData(info.name, server.ip, ServerData.Type.OTHER);
         if (info.getIconBytes() != null) target.setIconBytes(info.getIconBytes());
-        ConnectScreen.startConnecting(this, minecraft, ServerAddress.parseString(server.ip), target, false, null);
+        // OneClient's lobby: the camera pulls away from the scene, then the game connects
+        LobbyBridge.depart(() -> ConnectScreen.startConnecting(this, minecraft, ServerAddress.parseString(server.ip), target, false, null));
     }
 
     private void openServers() {
@@ -777,7 +863,7 @@ public final class MainMenu extends MenuScreen {
     }
 
     private void openWorld(LevelSummary world) {
-        minecraft.createWorldOpenFlows().openWorld(world.getLevelId(), () -> minecraft.setScreen(new MainMenu()));
+        LobbyBridge.depart(() -> minecraft.createWorldOpenFlows().openWorld(world.getLevelId(), () -> minecraft.setScreen(new MainMenu())));
     }
 
     private void playSelected() {
@@ -841,8 +927,21 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        // a click while the scene opens skips to the end of it
+        if (lobby() && LobbyBridge.skipIntro()) return true;
         if (clickHit(event)) return true;
         if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return super.mouseClicked(event, doubleClick);
+        if (lobby()) {
+            double sx = event.x() / width, sy = event.y() / height;
+            if (!socialOpen && LobbyBridge.touches(sx, sy)) {
+                pressingPlayer = true;
+                pressedAt = System.currentTimeMillis();
+                pressX = sx;
+                pressY = sy;
+                return true;
+            }
+            return super.mouseClicked(event, doubleClick);
+        }
         float x = (float) event.x() / u, y = (float) event.y() / u;
         float[] b = playerBox();
         if (!socialOpen && x >= b[0] && x < b[2] && y >= b[1] && y < b[3]) {
@@ -856,12 +955,14 @@ public final class MainMenu extends MenuScreen {
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (draggingVolume) {
             float x = (float) event.x() / u;
-            double v = Math.max(0.0, Math.min(1.0, (x - volumeX0) / Math.max(1f, volumeX1 - volumeX0)));
-            minecraft.options.getSoundSourceOptionInstance(SoundSource.MUSIC).set(v);
+            LobbyBridge.setMusicVolume(clamp((x - volumeX0) / Math.max(1f, volumeX1 - volumeX0), 0f, 1f));
             return true;
         }
-        if (dragging && dev.golemsclient.lobby.Lobby.active()) {
-            dev.golemsclient.lobby.LobbyInput.turnOffset += (float) dx * 2.0f / Math.max(0.5f, u);
+        if (pressingPlayer || grabbing) {
+            double sx = event.x() / width, sy = event.y() / height;
+            // like OneClient: moving a little picks your player up
+            if (!grabbing && Math.hypot((sx - pressX) * width, (sy - pressY) * height) > 4.0) grabbing = LobbyBridge.grab(pressX, pressY);
+            if (grabbing) LobbyBridge.drag(sx, sy);
             return true;
         }
         if (dragging) {
@@ -876,8 +977,16 @@ public final class MainMenu extends MenuScreen {
     public boolean mouseReleased(MouseButtonEvent event) {
         if (draggingVolume) {
             draggingVolume = false;
-            minecraft.options.save();
+            LobbyBridge.saveSettings();
         }
+        if (grabbing) {
+            LobbyBridge.release();
+        } else if (pressingPlayer) {
+            // a click on your player: it reacts, and the wardrobe opens (like OneClient)
+            if (LobbyBridge.click(pressX, pressY)) openTab(1);
+        }
+        pressingPlayer = false;
+        grabbing = false;
         dragging = false;
         return super.mouseReleased(event);
     }
@@ -885,6 +994,11 @@ public final class MainMenu extends MenuScreen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
+        if (lobby()) {
+            // OneClient's little key reactions, and any key skips the opening
+            LobbyBridge.key(key, !socialOpen && !lobbyPanel);
+            if (LobbyBridge.skipIntro()) return true;
+        }
         if (socialOpen) {
             if (key == GLFW.GLFW_KEY_ESCAPE || key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
                 socialOpen = false;
@@ -894,10 +1008,6 @@ public final class MainMenu extends MenuScreen {
         }
         if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
             socialOpen = true;
-            return true;
-        }
-        if (key == GLFW.GLFW_KEY_SPACE) {
-            playSelected();
             return true;
         }
         return super.keyPressed(event);

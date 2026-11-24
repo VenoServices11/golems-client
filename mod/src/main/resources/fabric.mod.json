@@ -3,8 +3,10 @@
   "id": "golemsclient",
   "version": "${version}",
   "name": "Golem's Client",
-  "description": "The Golem's Client experience in game: branding, main menu and more. By veno15.",
-  "authors": ["veno15 (holygrajl)"],
+  "description": "The Golem's Client experience in game: branding, main menu, the 3D lobby and more. By veno15. The lobby is ported from OneClient's PolyPlus by Polyfrost (GPL-3.0).",
+  "authors": [
+    "veno15 (holygrajl)"
+  ],
   "contact": {
     "homepage": "https://github.com/VenoServices11/golems-client",
     "sources": "https://github.com/VenoServices11/golems-client"
@@ -13,13 +15,19 @@
   "icon": "assets/golemsclient/icon.png",
   "environment": "client",
   "entrypoints": {
-    "client": ["dev.golemsclient.GolemsClient"]
+    "client": [
+      "dev.golemsclient.GolemsClient"
+    ]
   },
-  "mixins": ["golemsclient.mixins.json"],
+  "mixins": [
+    "golemsclient.mixins.json",
+    "golemsclient-lobby.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.16.0",
     "minecraft": "~${minecraft}",
     "java": ">=21",
-    "fabric-api": "*"
+    "fabric-api": "*",
+    "fabric-language-kotlin": ">=1.13.0"
   }
 }

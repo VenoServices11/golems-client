@@ -1,5 +1,16 @@
 plugins {
     id 'fabric-loom' version "${loom_version}"
+    // OneClient's lobby (ported from PolyPlus) is written in Kotlin
+    id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
+    id 'org.jetbrains.kotlin.plugin.serialization' version "${kotlin_version}"
+}
+
+repositories {
+    exclusiveContent {
+        forRepository { maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
+    mavenCentral()
 }
 
 version = "${project.mod_version}+mc${project.minecraft_version}"
@@ -14,6 +25,13 @@ dependencies {
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    // the Kotlin runtime (with coroutines and serialization); every Golem's Client bundle ships it
+    modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
+    // only the lobby's compatibility hooks look at these, when they're installed
+    modCompileOnly("maven.modrinth:sodium:${project.sodium_version}") { transitive = false }
+    modCompileOnly("maven.modrinth:iris:${project.iris_version}") { transitive = false }
+    // skips the Sodium and Iris hooks when those mods aren't there
+    implementation(include("com.moulberry:mixinconstraints:1.1.0"))
 }
 
 processResources {
@@ -28,6 +46,12 @@ tasks.withType(JavaCompile).configureEach {
     it.options.release = 21
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21
+    }
+}
+
 java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
@@ -37,12 +61,6 @@ java {
 loom {
     runs {
         client {
-            if (project.hasProperty('makescenes')) {
-                vmArg "-Dgolemsclient.makescenes=true"
-                vmArg "-Dgolemsclient.noLobby=true"
-                vmArg "-Dorg.lwjgl.util.DebugAllocator=true"
-                programArgs "--width", "1600", "--height", "900"
-            }
             if (project.hasProperty('devshots')) {
                 vmArg "-Dgolemsclient.devshots=true"
                 // the virtual screen's software OpenGL (Mesa) crashes in shader linking with jemalloc; LWJGL's debug

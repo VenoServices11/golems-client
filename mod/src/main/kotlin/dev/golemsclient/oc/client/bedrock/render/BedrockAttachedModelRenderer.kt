@@ -1,0 +1,81 @@
+// Ported from OneClient's PolyPlus (https://github.com/Polyfrost/PolyPlus), GPL-3.0, by Polyfrost.
+// Changed for Golem's Client.
+package dev.golemsclient.oc.client.bedrock.render
+
+import net.minecraft.resources.Identifier
+import dev.golemsclient.oc.client.bedrock.model.BedrockEffectModel
+import dev.golemsclient.oc.client.bedrock.playback.BoneTransform
+import dev.golemsclient.oc.client.render.PolyPlayerModel as PlayerModel
+import dev.golemsclient.oc.client.render.PoseStack
+
+import net.minecraft.client.renderer.rendertype.RenderTypes
+
+import net.minecraft.client.renderer.SubmitNodeCollector
+
+
+
+
+object BedrockAttachedModelRenderer {
+    data class DrawCall(
+        val model: BedrockEffectModel,
+        val texture: Identifier,
+        val sample: Map<String, BoneTransform>,
+        val poseWeight: Float,
+        val color: Int = -1,
+        val translucent: Boolean = false,
+        val backOffset: Float = 0f,
+        val scale: Float = 1f,
+        val textureVScale: Float = 1f,
+        val textureVOffset: Float = 0f,
+    )
+
+    private fun prepare(draw: DrawCall) {
+        draw.model.resetPose()
+        if (draw.sample.isNotEmpty()) {
+            draw.model.applyPose(draw.sample, draw.poseWeight)
+        }
+    }
+
+    fun submit(
+        poseStack: PoseStack,
+        submitNodeCollector: SubmitNodeCollector,
+        lightCoords: Int,
+        overlayCoords: Int,
+        playerModel: PlayerModel,
+        draws: Iterable<DrawCall>,
+    ) {
+        for (draw in draws) {
+            prepare(draw)
+
+            val renderType = if (draw.translucent) RenderTypes.entityTranslucent(draw.texture) else RenderTypes.entityCutoutNoCull(draw.texture)
+            
+
+            for (attachment in draw.model.attachments) {
+                poseStack.pushPose()
+                attachment.attachBone.translateAndRotateChain(playerModel, poseStack)
+                if (draw.backOffset != 0f) {
+                    poseStack.translate(0f, 0f, draw.backOffset)
+                }
+                if (draw.scale != 1f) {
+                    poseStack.scale(draw.scale, draw.scale, draw.scale)
+                }
+
+                submitNodeCollector.submitCustomGeometry(poseStack, renderType) { basePose, buffer ->
+                    val localStack = PoseStack()
+                    localStack.last().set(basePose)
+                    attachment.rootBone.render(
+                        localStack,
+                        buffer,
+                        lightCoords,
+                        overlayCoords,
+                        draw.color,
+                        draw.textureVScale,
+                        draw.textureVOffset,
+                    )
+                }
+
+                poseStack.popPose()
+            }
+        }
+    }
+}

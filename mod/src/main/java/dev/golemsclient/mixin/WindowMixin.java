@@ -11,6 +11,6 @@ public abstract class WindowMixin {
     /** Dev screenshots only: the finished frame, right before it's shown. */
     @Inject(method = "updateDisplay", at = @At("HEAD"))
     private void golemsclient$devShots(CallbackInfo ci) {
-        if (dev.golemsclient.DevShots.ON || dev.golemsclient.SceneMaker.ON) dev.golemsclient.DevShots.afterFrame();
+        if (dev.golemsclient.DevShots.ON) dev.golemsclient.DevShots.afterFrame();
     }
 }

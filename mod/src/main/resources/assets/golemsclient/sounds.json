@@ -1,0 +1,74 @@
+{
+  "lobby/startup": {
+    "sounds": [
+      {
+        "name": "golemsclient:lobby/startup",
+        "stream": false
+      }
+    ]
+  },
+  "lobby/day": {
+    "sounds": [
+      {
+        "name": "golemsclient:lobby/day",
+        "stream": true
+      }
+    ]
+  },
+  "lobby/night": {
+    "sounds": [
+      {
+        "name": "golemsclient:lobby/night",
+        "stream": true
+      }
+    ]
+  },
+  "lobby/golden": {
+    "sounds": [
+      {
+        "name": "golemsclient:lobby/golden",
+        "stream": true
+      }
+    ]
+  },
+  "lobby/aurora": {
+    "sounds": [
+      {
+        "name": "golemsclient:lobby/aurora",
+        "stream": true
+      }
+    ]
+  },
+  "lobby/interior_building": {
+    "sounds": [
+      {
+        "name": "golemsclient:lobby/interior_building",
+        "stream": true
+      }
+    ]
+  },
+  "lobby/interior_cave": {
+    "sounds": [
+      {
+        "name": "golemsclient:lobby/interior_cave",
+        "stream": true
+      }
+    ]
+  },
+  "lobby/nether": {
+    "sounds": [
+      {
+        "name": "golemsclient:lobby/nether",
+        "stream": true
+      }
+    ]
+  },
+  "lobby/the_end": {
+    "sounds": [
+      {
+        "name": "golemsclient:lobby/the_end",
+        "stream": true
+      }
+    ]
+  }
+}
