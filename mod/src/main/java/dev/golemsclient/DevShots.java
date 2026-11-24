@@ -59,7 +59,12 @@ public final class DevShots {
         step("06_pause_menu", () -> mc.pauseGame(false), 1500, null);
         step("07_lobby_again", () -> mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), 3500,
                 () -> mc.screen instanceof MainMenu && LobbyBridge.showing() && LobbyBridge.panelAlpha() >= 0.99f);
-        step("08_stats", () -> MainMenu.devTab(2), 1500, null);
+        step("08_news", () -> {
+            dev.golemsclient.menu.News.devFake(java.util.List.of(
+                    new dev.golemsclient.menu.News.Post("2", "Golem's Client 1.1 is out", "The Wardrobe and Stats pages are here.\nChange your skin and cape from the menu, and see where you spend your time.", "https://www.tiktok.com/@holygrajl", System.currentTimeMillis() / 1000L - 3600L),
+                    new dev.golemsclient.menu.News.Post("1", "Welcome to Golem's Client", "Thanks for trying it out. Tell me what you think in the Discord.", "", System.currentTimeMillis() / 1000L - 86400L * 2)));
+            MainMenu.devTab(3);
+        }, 1500, null);
         ClientTickEvents.END_CLIENT_TICK.register(DevShots::tick);
         // if a step hangs, write every thread's stack to the log (once)
         Thread watchdog = new Thread(() -> {

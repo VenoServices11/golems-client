@@ -5,7 +5,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use freya::prelude::*;
 use golems_core::stats::{
-    OwnerStats, StatsUser, owner_stats, post_announcement, save_owner_key, saved_owner_key,
+    NewsPost, OwnerStats, StatsUser, delete_news, news_posts, owner_stats, post_announcement, post_news,
+    save_owner_key, saved_owner_key,
 };
 
 use super::{section_header, settings_page};
@@ -27,6 +28,31 @@ impl Component for SettingsOwner {
         let mut revision = use_state(|| 0u32);
         let banner = use_state(String::new);
         let banner_status = use_state(|| None::<String>);
+        let news_title = use_state(String::new);
+        let news_body = use_state(String::new);
+        let news_link = use_state(String::new);
+        let news_status = use_state(|| None::<String>);
+        let news = use_state(|| None::<Result<Vec<NewsPost>, String>>);
+        let news_revision = use_state(|| 0u32);
+
+        // the News page's posts, read again after each post or delete
+        let news_deps = (*news_revision.read(), *has_key.read());
+        use_side_effect_with_deps(&news_deps, move |(_, has_key)| {
+            if !*has_key {
+                return;
+            }
+            spawn(async move {
+                let mut news = news;
+                let result = crate::launcher::off_ui(async move {
+                    match crate::launcher::state() {
+                        Ok(state) => news_posts(&state).await,
+                        Err(_) => Err("The launcher is still starting.".to_string()),
+                    }
+                })
+                .await;
+                news.set(Some(result));
+            });
+        });
 
         // refresh every few seconds while the page is open
         use_hook(move || {
@@ -129,7 +155,68 @@ impl Component for SettingsOwner {
                             .text("Take down"),
                     ),
             ))
-            .child(section_header("Golem's Client users"));
+            .child(section_header("News"))
+            .child(settings_row(
+                IconType::File02,
+                "New post",
+                news_status.read().clone().unwrap_or_else(|| {
+                    "Shown on the News page of everyone's in-game main menu, newest first.".to_string()
+                }),
+                rect()
+                    .vertical()
+                    .spacing(8.)
+                    .child(
+                        TextInput::new(news_title)
+                            .placeholder("Title")
+                            .width(Size::px(320.)),
+                    )
+                    .child(
+                        TextInput::new(news_body)
+                            .placeholder("What's new")
+                            .width(Size::px(320.)),
+                    )
+                    .child(
+                        rect()
+                            .horizontal()
+                            .spacing(8.)
+                            .cross_align(Alignment::Center)
+                            .child(
+                                TextInput::new(news_link)
+                                    .placeholder("Link (optional, https://...)")
+                                    .width(Size::px(252.)),
+                            )
+                            .child(
+                                Button::new()
+                                    .primary()
+                                    .small()
+                                    .on_press(move |_| {
+                                        write_news(key, news_title, news_body, news_link, news_status, news_revision)
+                                    })
+                                    .text("Post"),
+                            ),
+                    ),
+            ));
+
+        match news.read().clone() {
+            None => {
+                page = page.child(note("Loading posts..."));
+            }
+            Some(Err(error)) => {
+                page = page.child(note(error));
+            }
+            Some(Ok(posts)) if posts.is_empty() => {
+                page = page.child(note("No posts yet."));
+            }
+            Some(Ok(posts)) => {
+                page = page.children(
+                    posts
+                        .into_iter()
+                        .map(|post| news_row(post, key, news_status, news_revision).into_element()),
+                );
+            }
+        }
+
+        page = page.child(section_header("Golem's Client users"));
 
         match stats.read().clone() {
             None => {
@@ -211,6 +298,122 @@ fn announce(
             Err(error) => status.set(Some(error)),
         }
     });
+}
+
+/// Sends the post in the News fields, then clears them and reads the posts again.
+fn write_news(
+    key: State<String>,
+    mut title: State<String>,
+    mut body: State<String>,
+    mut link: State<String>,
+    mut status: State<Option<String>>,
+    mut revision: State<u32>,
+) {
+    let key = key.peek().trim().to_string();
+    let (t, b, l) = (
+        title.peek().trim().to_string(),
+        body.peek().trim().to_string(),
+        link.peek().trim().to_string(),
+    );
+    if t.is_empty() || b.is_empty() {
+        status.set(Some("A post needs a title and some text.".to_string()));
+        return;
+    }
+    if !l.is_empty() && !l.starts_with("https://") {
+        status.set(Some("The link has to start with https://".to_string()));
+        return;
+    }
+    status.set(Some("Posting...".to_string()));
+    spawn(async move {
+        let result = crate::launcher::off_ui(async move {
+            match crate::launcher::state() {
+                Ok(state) => post_news(&state, &key, &t, &b, &l).await,
+                Err(_) => Err("The launcher is still starting.".to_string()),
+            }
+        })
+        .await;
+        match result {
+            Ok(()) => {
+                status.set(Some("Posted.".to_string()));
+                title.set(String::new());
+                body.set(String::new());
+                link.set(String::new());
+                *revision.write() += 1;
+            }
+            Err(error) => status.set(Some(error)),
+        }
+    });
+}
+
+/// One News post, with a button to take it down.
+fn news_row(post: NewsPost, key: State<String>, mut status: State<Option<String>>, mut revision: State<u32>) -> impl IntoElement {
+    let id = post.id.clone();
+    let details = if post.link.is_empty() {
+        format!("Posted {}", ago(post.at as i64))
+    } else {
+        format!("Posted {} · {}", ago(post.at as i64), post.link)
+    };
+    rect()
+        .horizontal()
+        .width(Size::fill())
+        .spacing(12.)
+        .cross_align(Alignment::Center)
+        .padding(Gaps::new_symmetric(8., 12.))
+        .background(colors::card())
+        .corner_radius(rounded(8.))
+        .child(
+            rect()
+                .vertical()
+                .width(Size::flex(1.0))
+                .spacing(2.)
+                .child(
+                    label()
+                        .text(post.title)
+                        .font_size(text_size(14.))
+                        .font_weight(FontWeight::MEDIUM)
+                        .color(colors::fg_primary()),
+                )
+                .child(
+                    label()
+                        .text(post.body)
+                        .font_size(text_size(12.))
+                        .max_lines(2)
+                        .color(colors::fg_secondary()),
+                )
+                .child(
+                    label()
+                        .text(details)
+                        .font_size(text_size(11.))
+                        .color(colors::fg_secondary()),
+                ),
+        )
+        .child(
+            Button::new()
+                .secondary()
+                .small()
+                .on_press(move |_| {
+                    let key = key.peek().trim().to_string();
+                    let id = id.clone();
+                    status.set(Some("Deleting...".to_string()));
+                    spawn(async move {
+                        let result = crate::launcher::off_ui(async move {
+                            match crate::launcher::state() {
+                                Ok(state) => delete_news(&state, &key, &id).await,
+                                Err(_) => Err("The launcher is still starting.".to_string()),
+                            }
+                        })
+                        .await;
+                        match result {
+                            Ok(()) => {
+                                status.set(Some("Post deleted.".to_string()));
+                                *revision.write() += 1;
+                            }
+                            Err(error) => status.set(Some(error)),
+                        }
+                    });
+                })
+                .text("Delete"),
+        )
 }
 
 fn note(text: impl Into<String>) -> impl IntoElement {

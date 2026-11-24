@@ -82,6 +82,7 @@ public final class MainMenu extends MenuScreen {
     private int page;
     private final WardrobePage wardrobe = new WardrobePage(this);
     private final StatsPage stats = new StatsPage(this, ip -> ping == null ? null : ping.icon(ip));
+    private final NewsPage news = new NewsPage(this, DISCORD);
     // pressing on your player in the scene: a short hold or a drag picks it up, a click makes it react
     private boolean pressingPlayer, grabbing;
     private long pressedAt;
@@ -167,6 +168,7 @@ public final class MainMenu extends MenuScreen {
         lobbyPanel = false;
         if (page == 1) wardrobe.open();
         if (page == 2) stats.open();
+        if (page == 3) news.open();
     }
 
     @Override
@@ -244,6 +246,11 @@ public final class MainMenu extends MenuScreen {
             // Stats, with the Play card kept at the bottom right
             drawTopBar();
             stats.draw(w - PAD - SIDE_W - 8f, H - 26f - 132f);
+            drawPlayCard();
+        } else if (page == 3) {
+            // News, with the Play card kept at the bottom right
+            drawTopBar();
+            news.draw(w - PAD - SIDE_W - 8f);
             drawPlayCard();
         } else {
             drawPlayer(g);
@@ -391,6 +398,8 @@ public final class MainMenu extends MenuScreen {
             float hv = anim("tab" + i, over);
             int color = active ? TEXT : mix(TEXT_2, TEXT, hv);
             text(Face.MEDIUM, tab, x, y + 9f - size * 0.6f, size, color, Align.LEFT);
+            // a dot on News when there's a post you haven't seen
+            if (i == 3 && page != 3 && News.unread()) Overlay.circle((x + tw + 4f) * u, (y + 3f) * u, 2f * u, c(ACCENT));
             if (active) {
                 if (tabX < 0f) {
                     tabX = x;
@@ -434,6 +443,7 @@ public final class MainMenu extends MenuScreen {
             case 0 -> setPage(0);
             case 1 -> setPage(1);
             case 2 -> setPage(2);
+            case 3 -> setPage(3);
             case 4 -> {
                 openFolder(minecraft.gameDirectory.toPath().resolve("screenshots"));
                 showToast("Opened your screenshots folder. The Screenshots tab is coming soon.");
@@ -646,6 +656,7 @@ public final class MainMenu extends MenuScreen {
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         float y = (float) mouseY / u;
         if (page == 1 && wardrobe.scroll(mouseY, scrollY)) return true;
+        if (page == 3 && news.scroll(mouseY, scrollY)) return true;
         if (lobbyPanel && y >= sceneListY0 && y < sceneListY1) {
             sceneScroll -= (float) scrollY;
             return true;

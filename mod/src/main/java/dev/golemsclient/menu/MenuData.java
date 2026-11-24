@@ -34,6 +34,8 @@ public final class MenuData {
     public List<Server> servers = new ArrayList<>();
     public boolean singleplayer;
     public String dismissedAnnouncement = "";
+    /** The newest News post looked at (a dot on the News tab until there's a newer one). */
+    public String lastNewsSeen = "";
     /** The music volume before the menu's mute button was pressed (-1 when not muted by it). */
     public double mutedMusicVolume = -1;
 
@@ -86,6 +88,7 @@ public final class MenuData {
                     if (d.servers == null) d.servers = new ArrayList<>();
                     d.servers.removeIf(s -> s == null || s.ip == null || s.ip.isBlank());
                     if (d.dismissedAnnouncement == null) d.dismissedAnnouncement = "";
+                    if (d.lastNewsSeen == null) d.lastNewsSeen = "";
                     if (d.lobbyScene == null) d.lobbyScene = "auto";
                     if (d.lobbyTime == null) d.lobbyTime = "scene";
                     return d;

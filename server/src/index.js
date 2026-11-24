@@ -38,6 +38,9 @@
  *   GET  /launcher/dashboard                      -> the owner's stats page (asks for the owner key)
  *   GET  /launcher/announcement                   -> { id, text, at } the banner on the in-game main menu ({} if none)
  *   POST /launcher/announce { key, text }         -> { ok, id }   posts the banner ("" takes it down)
+ *   GET  /launcher/news                           -> { posts: [{ id, title, body, link, at }] } the menu's News page, newest first
+ *   POST /launcher/news/post { key, title, body, link } -> { ok, id }   the owner writes a News post
+ *   POST /launcher/news/delete { key, id }        -> { ok }       the owner takes a post down
  *
  * The owner key is a secret:  npx wrangler secret put ADMIN_KEY
  */
@@ -81,6 +84,13 @@ export default {
         return json({}, 200);
       }
     }
+    if (request.method === "GET" && url.pathname === "/launcher/news") {
+      try {
+        return await launcherNews(env);
+      } catch (e) {
+        return json({ posts: [] }, 200);
+      }
+    }
     if (request.method === "GET" && url.pathname === "/admin/users") {
       try {
         return await adminUsers(env, url);
@@ -119,6 +129,8 @@ export default {
         case "/launcher/leave": return await launcherLeave(env, body);
         case "/launcher/stats": return await launcherStats(env, body, now);
         case "/launcher/announce": return await launcherAnnounce(env, body, now);
+        case "/launcher/news/post": return await launcherNewsPost(env, body, now);
+        case "/launcher/news/delete": return await launcherNewsDelete(env, body);
         default: return json({ error: "not found" }, 404);
       }
     } catch (e) {
@@ -175,6 +187,8 @@ async function ensureUsers(env) {
     env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_users (uuid TEXT PRIMARY KEY, name TEXT, version TEXT, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_online (uuid TEXT PRIMARY KEY, seen INTEGER NOT NULL, state TEXT NOT NULL, instance TEXT, mc TEXT)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_announcements (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, at INTEGER NOT NULL)"),
+    // the in-game News page: the owner's posts
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_news (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, body TEXT NOT NULL, link TEXT, at INTEGER NOT NULL)"),
   ]);
   usersReady = true;
 }
@@ -620,6 +634,40 @@ async function launcherAnnounce(env, body, now) {
   const result = await env.DB.prepare("INSERT INTO launcher_announcements (text, at) VALUES (?, ?)").bind(text, now).run();
   await env.DB.prepare("DELETE FROM launcher_announcements WHERE id < ?").bind((result.meta && result.meta.last_row_id || 0) - 20).run();
   return json({ ok: true, id: String(result.meta && result.meta.last_row_id || "") });
+}
+
+/** The News page on Golem's Client's main menu: the owner's posts, newest first. */
+async function launcherNews(env) {
+  await ensureUsers(env);
+  const rows = (await env.DB.prepare("SELECT id, title, body, link, at FROM launcher_news ORDER BY id DESC LIMIT 30").all()).results || [];
+  const posts = rows.map(r => ({ id: String(r.id), title: r.title, body: r.body, link: r.link || "", at: r.at }));
+  return new Response(JSON.stringify({ posts }), {
+    headers: { "content-type": "application/json", "cache-control": "public, max-age=60" },
+  });
+}
+
+/** The owner writes a News post. Needs the owner key. A link must be an https address. */
+async function launcherNewsPost(env, body, now) {
+  if (!isOwnerKey(env, body.key)) return json({ error: "wrong key" }, 403);
+  await ensureUsers(env);
+  const title = typeof body.title === "string" ? body.title.trim().slice(0, 80) : "";
+  const text = typeof body.body === "string" ? body.body.trim().slice(0, 2000) : "";
+  let link = typeof body.link === "string" ? body.link.trim().slice(0, 300) : "";
+  if (link && !/^https:\/\/[^\s]+$/.test(link)) link = "";
+  if (!title || !text) return json({ error: "a post needs a title and some text" }, 400);
+  const result = await env.DB.prepare("INSERT INTO launcher_news (title, body, link, at) VALUES (?, ?, ?, ?)")
+    .bind(title, text, link || null, now).run();
+  return json({ ok: true, id: String(result.meta && result.meta.last_row_id || "") });
+}
+
+/** The owner takes a News post down. Needs the owner key. */
+async function launcherNewsDelete(env, body) {
+  if (!isOwnerKey(env, body.key)) return json({ error: "wrong key" }, 403);
+  await ensureUsers(env);
+  const id = parseInt(body.id, 10);
+  if (!Number.isFinite(id)) return json({ error: "bad id" }, 400);
+  await env.DB.prepare("DELETE FROM launcher_news WHERE id = ?").bind(id).run();
+  return json({ ok: true });
 }
 
 const DASHBOARD_HTML = `<!doctype html>

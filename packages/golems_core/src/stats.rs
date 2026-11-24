@@ -173,6 +173,76 @@ pub async fn post_announcement(state: &LauncherState, key: &str, text: &str) -> 
     }
 }
 
+/// A post on the News page of Golem's Client's in-game main menu
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct NewsPost {
+    pub id: String,
+    pub title: String,
+    pub body: String,
+    #[serde(default)]
+    pub link: String,
+    pub at: u64,
+}
+
+#[derive(Deserialize)]
+struct NewsList {
+    #[serde(default)]
+    posts: Vec<NewsPost>,
+}
+
+/// The News page's posts, newest first
+pub async fn news_posts(state: &LauncherState) -> Result<Vec<NewsPost>, String> {
+    let response = state
+        .services
+        .requester
+        .http()
+        .get(format!("{PRESENCE_URL}/launcher/news"))
+        .header("cache-control", "no-cache")
+        .timeout(TIMEOUT)
+        .send()
+        .await
+        .map_err(|_| "Couldn't reach the server.".to_string())?;
+    match response.status().as_u16() {
+        200 => response
+            .json::<NewsList>()
+            .await
+            .map(|list| list.posts)
+            .map_err(|_| "The server sent something unexpected.".to_string()),
+        404 => Err("The server needs updating.".to_string()),
+        code => Err(format!("The server answered with an error ({code}).")),
+    }
+}
+
+/// Writes a News post (the link is optional and must start with https://)
+pub async fn post_news(state: &LauncherState, key: &str, title: &str, body: &str, link: &str) -> Result<(), String> {
+    news_call(state, "/launcher/news/post", serde_json::json!({ "key": key, "title": title, "body": body, "link": link })).await
+}
+
+/// Takes a News post down
+pub async fn delete_news(state: &LauncherState, key: &str, id: &str) -> Result<(), String> {
+    news_call(state, "/launcher/news/delete", serde_json::json!({ "key": key, "id": id })).await
+}
+
+async fn news_call(state: &LauncherState, path: &str, body: serde_json::Value) -> Result<(), String> {
+    let response = state
+        .services
+        .requester
+        .http()
+        .post(format!("{PRESENCE_URL}{path}"))
+        .json(&body)
+        .timeout(TIMEOUT)
+        .send()
+        .await
+        .map_err(|_| "Couldn't reach the server.".to_string())?;
+    match response.status().as_u16() {
+        200 => Ok(()),
+        400 => Err("A post needs a title and some text.".to_string()),
+        403 => Err("Wrong owner key.".to_string()),
+        404 => Err("The server needs updating.".to_string()),
+        code => Err(format!("The server answered with an error ({code}).")),
+    }
+}
+
 fn owner_key_file() -> Option<PathBuf> {
     golems_common::paths::config_dir()
         .ok()
