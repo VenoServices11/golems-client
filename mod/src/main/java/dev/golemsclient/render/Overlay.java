@@ -70,7 +70,11 @@ public final class Overlay {
 
     // ------------------------------------------------------------------ text
 
+    private static final boolean NO_TEXT = Boolean.getBoolean("golemsclient.debug.noText");
+    private static final boolean NO_PICTURES = Boolean.getBoolean("golemsclient.debug.noPictures");
+
     public static void text(Face face, String s, float x, float y, float size, int argb, Align align) {
+        if (NO_TEXT) return;
         if (g == null || s == null || s.isEmpty() || (argb >>> 24) == 0) return;
         int px = Math.max(5, Math.round(size * scale));
         Fonts.Sheet sheet = Fonts.sheet(face, px);
@@ -218,6 +222,7 @@ public final class Overlay {
 
     /** A PNG from the mod's jar (for example "/assets/golemsclient/textures/logo.png"), tinted by argb. */
     public static void image(String path, float x0, float y0, float x1, float y1, int argb) {
+        if (NO_PICTURES) return;
         if (g == null || (argb >>> 24) == 0 || x1 <= x0 || y1 <= y0) return;
         GuiTexture t = Textures.resource(path, Math.round((x1 - x0) * scale), Math.round((y1 - y0) * scale));
         if (t != null) texture(t, x0, y0, x1, y1, 0f, 0f, 1f, 1f, argb);

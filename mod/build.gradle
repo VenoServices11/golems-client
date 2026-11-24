@@ -41,6 +41,8 @@ loom {
                 vmArg "-Dgolemsclient.devshots=true"
                 vmArg "-Dorg.lwjgl.system.allocator=system"
                 vmArg "-Dorg.lwjgl.util.Debug=true"
+                if (project.hasProperty('noText')) vmArg "-Dgolemsclient.debug.noText=true"
+                if (project.hasProperty('noPictures')) vmArg "-Dgolemsclient.debug.noPictures=true"
                 programArgs "--width", "1600", "--height", "900"
             }
         }
