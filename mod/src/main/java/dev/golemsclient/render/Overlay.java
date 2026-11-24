@@ -140,7 +140,7 @@ public final class Overlay {
                     dl.addImage(tex, im.x0() * fx, im.y0() * fy, im.x1() * fx, im.y1() * fy, 0f, 0f, 1f, 1f, abgr(im.argb()));
                 }
             } else if (op instanceof Text t) {
-                float px = t.size() * fy;
+                int px = Math.max(4, Math.round(t.size() * fy));
                 ImFont f = Fonts.pick(t.face(), px);
                 if (f == null) continue;
                 float x = t.x() * fx;
