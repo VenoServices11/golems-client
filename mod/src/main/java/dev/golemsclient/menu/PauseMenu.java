@@ -10,7 +10,7 @@ import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.ShareToLanScreen;
 import net.minecraft.client.gui.screens.achievement.StatsScreen;
 import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
-import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.gui.screens.social.SocialInteractionsScreen;
 import net.minecraft.client.input.KeyEvent;
@@ -434,7 +434,11 @@ public final class PauseMenu extends MenuScreen {
             Quaternionf pose = new Quaternionf().rotateZ((float) Math.PI);
             Quaternionf camera = new Quaternionf().rotateX((float) Math.toRadians(-6f));
             pose.mul(camera);
-            InventoryScreen.renderEntityInInventory(g, x0, py0, x1, py1, scale, translation, pose, camera, player);
+            EntityRenderState state = minecraft.getEntityRenderDispatcher().extractEntity(player, 1f);
+            state.lightCoords = 0xF000F0;
+            state.shadowPieces.clear();
+            state.nameTag = null;
+            submitEntity(g, state, scale, translation, pose, camera, x0, py0, x1, py1);
         } finally {
             player.yBodyRot = bodyRot;
             player.yBodyRotO = bodyRotO;
@@ -442,6 +446,33 @@ public final class PauseMenu extends MenuScreen {
             player.setXRot(xRot);
             player.yHeadRot = headRot;
             player.yHeadRotO = headRotO;
+        }
+    }
+
+    // GuiGraphics' "draw this entity in a box" (what the inventory uses), found by its parameters
+    private static java.lang.reflect.Method submit;
+    private static boolean looked;
+
+    private static void submitEntity(GuiGraphics g, EntityRenderState state, float scale, Vector3f translation, Quaternionf pose,
+                                     Quaternionf camera, int x0, int y0, int x1, int y1) {
+        if (!looked) {
+            looked = true;
+            Class<?>[] want = {EntityRenderState.class, float.class, Vector3f.class, Quaternionf.class, Quaternionf.class,
+                    int.class, int.class, int.class, int.class};
+            for (java.lang.reflect.Method m : GuiGraphics.class.getMethods()) {
+                if (java.util.Arrays.equals(m.getParameterTypes(), want)) {
+                    submit = m;
+                    break;
+                }
+            }
+            if (submit == null) GolemsClient.LOGGER.warn("Couldn't find how to draw your player on the pause screen");
+        }
+        if (submit == null) return;
+        try {
+            submit.invoke(g, state, scale, translation, pose, camera, x0, y0, x1, y1);
+        } catch (ReflectiveOperationException e) {
+            GolemsClient.LOGGER.debug("Couldn't draw your player: {}", e.toString());
+            submit = null;
         }
     }
 
