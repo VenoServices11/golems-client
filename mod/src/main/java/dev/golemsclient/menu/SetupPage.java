@@ -86,6 +86,10 @@ final class SetupPage {
             default -> gameplay(x0 + shift);
         }
         Overlay.unclip();
+        // the hotbar preview's caption, under the card (the hotbar itself is drawn after the menu)
+        if (page == 1 && previewAt != null && previewText != null) {
+            m.text(Face.REGULAR, previewText, previewAt[0], previewAt[1] + 22f / m.u + 5f, 6.5f, MenuScreen.TEXT_2, Align.CENTER);
+        }
         m.fade = pageFade;
         nav(x0, y1);
         m.fade = saved;
@@ -153,8 +157,7 @@ final class SetupPage {
         // under the card: Minecraft's hotbar at the size picked (drawn after the menu, in drawAfter)
         int scale = (int) Math.round(Minecraft.getInstance().getWindow().getGuiScale());
         previewAt = new float[] {x0 + CW / 2f, y0 + CH + 12f};
-        m.text(Face.REGULAR, "Your hotbar at size " + scale + (current == 0 ? " (Auto)" : ""), x0 + CW / 2f, y0 + CH + 12f + 22f / m.u + 5f,
-                6.5f, MenuScreen.TEXT_2, Align.CENTER);
+        previewText = "Your hotbar at size " + scale + (current == 0 ? " (Auto)" : "");
 
         m.text(Face.MONO, "PAUSE SCREEN", px, y, 5.5f, MenuScreen.TEXT_3, Align.LEFT);
         y += 10f;
@@ -254,6 +257,7 @@ final class SetupPage {
     }
 
     private float[] previewAt;
+    private String previewText;
 
     /** After the menu is drawn: the hotbar preview on the Look and feel page. */
     void drawAfter(net.minecraft.client.gui.GuiGraphics g) {

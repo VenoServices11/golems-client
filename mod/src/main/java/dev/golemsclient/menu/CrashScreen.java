@@ -164,7 +164,7 @@ public final class CrashScreen extends MenuScreen {
             });
             tx += tw + 16f;
         }
-        smallIcon("folder", bx1 - 30f, by0 + 12f, "Copy", this::copy);
+        smallIcon("copy", bx1 - 30f, by0 + 12f, "Copy", this::copy);
         smallIcon(uploading ? "refresh" : "cloud", bx1 - 16f, by0 + 12f, "Upload to mclo.gs (the link is copied)", this::upload);
         rect(bx0, by0 + 21f, bx1, by0 + 21.5f, 0f, LINE);
 
