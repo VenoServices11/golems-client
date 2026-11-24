@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ConnectScreenMixin",
+    "CrashReportMixin",
     "LoadingOverlayAccessor",
     "LoadingOverlayMixin",
     "LobbySoundsMixin",
@@ -13,7 +14,16 @@
     "SplashRendererAccessor",
     "TabListBadgeMixin",
     "TitleScreenSwapMixin",
-    "WindowMixin"
+    "WindowMixin",
+    "settings.AccessibilityOptionsAccessor",
+    "settings.ChatOptionsAccessor",
+    "settings.ControlsOptionsAccessor",
+    "settings.FontOptionsAccessor",
+    "settings.MouseOptionsAccessor",
+    "settings.OptionInstanceAccessor",
+    "settings.OptionsScreenAccessor",
+    "settings.TooltipAccessor",
+    "settings.VideoOptionsAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

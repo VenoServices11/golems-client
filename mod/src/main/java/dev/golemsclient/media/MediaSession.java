@@ -350,7 +350,7 @@ public final class MediaSession {
             if (durationMs > 0L) {
                 positionMs = Math.min(positionMs, durationMs);
             }
-            Snapshot snapshot = new Snapshot(title, artist, album, durationMs, positionMs, now, state, rate, this.thumbnail, this.thumbnailType, this.thumbnailVersion);
+            Snapshot snapshot = new Snapshot(title, artist, album, durationMs, positionMs, now, state, rate, this.thumbnail, this.thumbnailType, this.thumbnailVersion, app);
             return snapshot;
         }
     }
@@ -520,7 +520,7 @@ public final class MediaSession {
         return false;
     }
 
-        public record Snapshot(String title, String artist, String album, long durationMs, long positionMs, long sampledAtMs, PlaybackState state, double rate, byte[] thumbnail, String thumbnailType, int thumbnailVersion) {
+        public record Snapshot(String title, String artist, String album, long durationMs, long positionMs, long sampledAtMs, PlaybackState state, double rate, byte[] thumbnail, String thumbnailType, int thumbnailVersion, String app) {
         public boolean hasThumbnail() {
             return this.thumbnail != null;
         }

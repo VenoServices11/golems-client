@@ -417,7 +417,7 @@ public final class PauseMenu extends MenuScreen {
         LivingEntity player = minecraft.player;
         modelBox = null;
         if (player == null) return;
-        float top = 34f + 8f + (wardrobePage ? 0f : 28f), bottom = H - 16f - (wardrobePage ? 40f : 30f + 8f + 46f + 8f);
+        float top = 34f + 8f + (wardrobePage ? 0f : 28f), bottom = H - 16f - (wardrobePage ? 40f : 30f + 8f + MUSIC_H + 8f);
         float height = Math.min((bottom - top) * 0.92f, 260f);
         if (height < 70f) return;
         float width = height * 0.55f;
@@ -511,7 +511,7 @@ public final class PauseMenu extends MenuScreen {
     private void drawBottomLeft() {
         float x0 = PAD, x1 = PAD + 196f, slide = (1f - fade) * 8f;
         float by1 = H - 16f + slide, by0 = by1 - 30f;
-        drawMusic(x0, by0 - 8f - 46f, x1, by0 - 8f);
+        drawMusic(x0, by0 - 8f - MUSIC_H, x1, by0 - 8f);
         // you (your party, once Golem's Client has parties)
         card(x0, by0, x1, by1);
         drawHead(x0 + 7f, by0 + 6f, 18f, 3f);

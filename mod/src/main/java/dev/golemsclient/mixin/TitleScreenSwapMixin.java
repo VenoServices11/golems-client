@@ -26,6 +26,11 @@ public abstract class TitleScreenSwapMixin {
             if (PauseMenu.takeVanilla()) return screen;
             return new PauseMenu();
         }
+        // Minecraft's options, restyled like OneClient's settings (not when "Classic options" asked for them)
+        if (screen != null && screen.getClass() == net.minecraft.client.gui.screens.options.OptionsScreen.class
+                && !dev.golemsclient.menu.SettingsScreen.takePass()) {
+            return new dev.golemsclient.menu.SettingsScreen(((dev.golemsclient.mixin.settings.OptionsScreenAccessor) screen).golemsclient$lastScreen());
+        }
         return screen;
     }
 }

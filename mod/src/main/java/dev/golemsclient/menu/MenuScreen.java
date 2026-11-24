@@ -131,44 +131,106 @@ abstract class MenuScreen extends net.minecraft.client.gui.screens.Screen {
         return false;
     }
 
+    /** How tall the media widget is (units). */
+    protected static final float MUSIC_H = 58f;
+
+    /**
+     * What's playing (Spotify, YouTube or any app in Windows' media controls), like OneClient's media widget: the art
+     * with a soft wash of its colour, which app it is with little equalizer bars while it plays, the title (it scrolls
+     * when it's long), the artist, the time and the controls.
+     */
     protected void drawMusic(float x0, float y0, float x1, float y1) {
-        card(x0, y0, x1, y1);
         MediaSession.Snapshot s = NowPlaying.get();
-        float art = 30f, ax = x0 + 8f, ay = y0 + 8f;
+        card(x0, y0, x1, y1);
+        float art = y1 - y0 - 16f, ax = x0 + 8f, ay = y0 + 8f;
+        // the wash: the art's colour, fading out to the right
+        int tone = NowPlaying.tone(s);
+        float wash = anim("music:wash", tone != 0);
+        if (wash > 0.01f && tone != 0) {
+            int strips = 24;
+            float span = (x1 - x0) * 0.7f;
+            for (int i = 0; i < strips; i++) {
+                float k = 1f - i / (float) strips;
+                int a = Math.round(0x38 * k * k * wash);
+                float sx0 = x0 + 1f + span * i / strips, sx1 = x0 + 1f + span * (i + 1) / strips;
+                rect(sx0, y0 + 1f, sx1, y1 - 1f, i == 0 ? 7f : 0f, (a << 24) | tone);
+            }
+        }
         dev.golemsclient.render.GuiTexture tex = s != null && s.hasThumbnail() ? albumArt(s) : null;
         if (tex != null) {
             Overlay.texture(tex, ax * u, ay * u, (ax + art) * u, (ay + art) * u, 0f, 0f, 1f, 1f, c(0xFFFFFFFF));
         } else {
-            rect(ax, ay, ax + art, ay + art, 4f, 0xFF1F1F24);
-            Overlay.icon(s == null ? "volume" : "play", (ax + 9f) * u, (ay + 9f) * u, 12f * u, c(TEXT_3));
+            rect(ax, ay, ax + art, ay + art, 5f, 0xFF1F1F24);
+            float is = art * 0.4f;
+            Overlay.icon("volume", (ax + art / 2f - is / 2f) * u, (ay + art / 2f - is / 2f) * u, is * u, c(TEXT_3));
         }
-        float tx = ax + art + 8f;
-        float maxText = x1 - 58f - tx;
+        float tx = ax + art + 9f;
         if (s == null) {
-            text(Face.SEMIBOLD, "Nothing playing", tx, y0 + 10f, 8f, TEXT, Align.LEFT);
+            text(Face.SEMIBOLD, "Nothing playing", tx, y0 + 15f, 8f, TEXT, Align.LEFT);
             text(Face.REGULAR, fit(Face.REGULAR, "Play music in Spotify, YouTube or any app", 6.5f, x1 - 10f - tx),
-                    tx, y0 + 22f, 6.5f, TEXT_2, Align.LEFT);
+                    tx, y0 + 27f, 6.5f, TEXT_2, Align.LEFT);
             return;
         }
-        text(Face.SEMIBOLD, fit(Face.SEMIBOLD, s.title(), 8f, maxText), tx, y0 + 8f, 8f, TEXT, Align.LEFT);
-        String by = s.artist() == null || s.artist().isBlank() ? "Now playing" : s.artist();
-        text(Face.REGULAR, fit(Face.REGULAR, by, 6.5f, maxText), tx, y0 + 19.5f, 6.5f, TEXT_2, Align.LEFT);
-        // progress
-        float bx0 = tx, bx1 = x1 - 10f, by0 = y1 - 10f;
-        rect(bx0, by0, bx1, by0 + 2f, 1f, 0x26FFFFFF);
-        if (s.durationMs() > 0) {
-            float p = clamp(NowPlaying.position(s) / (float) s.durationMs(), 0f, 1f);
-            if (p > 0.005f) rect(bx0, by0, bx0 + (bx1 - bx0) * p, by0 + 2f, 1f, ACCENT);
-        }
-        // controls
         boolean playing = s.state() == MediaSession.PlaybackState.PLAYING;
-        float cy = y0 + 17f;
-        float pr = 9f, pcx = x1 - 22f;
+        int accent = tone != 0 ? (0xFF << 24) | tone : ACCENT;
+
+        // the controls, top right
+        float cy = y0 + 15f, pr = 8.5f, pcx = x1 - 22f;
+        float maxText = pcx - pr - 22f - tx;
+        // which app, with the equalizer while it plays
+        String app = NowPlaying.player(s.app());
+        float ly = y0 + 7f;
+        if (playing) {
+            float t = (System.nanoTime() / 1_000_000_000f);
+            float[] speed = {5.1f, 6.7f, 4.3f}, phase = {0f, 1.3f, 2.4f};
+            for (int i = 0; i < 3; i++) {
+                float level = 0.25f + 0.75f * Math.abs((float) Math.sin(t * speed[i] + phase[i]));
+                float bh = 5f * level;
+                rect(tx + i * 2.4f, ly + 5f - bh, tx + i * 2.4f + 1.5f, ly + 5f, 0.5f, accent);
+            }
+        }
+        float lx = tx + (playing ? 10f : 0f);
+        text(Face.MONO, (app.isEmpty() ? "NOW PLAYING" : app.toUpperCase(java.util.Locale.ROOT)), lx, ly, 5f, TEXT_3, Align.LEFT);
+
+        // the title (scrolling when it doesn't fit) and the artist
+        String title = s.title().isBlank() ? (app.isEmpty() ? "Now playing" : app) : s.title();
+        float titleY = y0 + 16f;
+        float tw = textW(Face.SEMIBOLD, title, 8f);
+        if (tw <= maxText) {
+            text(Face.SEMIBOLD, title, tx, titleY, 8f, TEXT, Align.LEFT);
+        } else {
+            float gap = 24f, cycle = tw + gap;
+            float t = (System.currentTimeMillis() % 1_000_000L) / 1000f;
+            float travel = Math.max(0f, (t * 18f) % (cycle + 36f) - 36f);
+            Overlay.clip(tx * u, (titleY - 2f) * u, (tx + maxText) * u, (titleY + 11f) * u);
+            text(Face.SEMIBOLD, title, tx - travel, titleY, 8f, TEXT, Align.LEFT);
+            text(Face.SEMIBOLD, title, tx - travel + cycle, titleY, 8f, TEXT, Align.LEFT);
+            Overlay.unclip();
+        }
+        String by = s.artist() == null || s.artist().isBlank() ? "" : s.artist();
+        if (!by.isEmpty()) text(Face.REGULAR, fit(Face.REGULAR, by, 6.5f, maxText), tx, y0 + 27.5f, 6.5f, TEXT_2, Align.LEFT);
+
+        // the time and how far through
+        float bx0 = tx, bx1 = x1 - 10f, by0 = y1 - 11f;
+        long pos = NowPlaying.position(s);
+        if (s.durationMs() > 0) {
+            String now = NowPlaying.clock(pos), total = NowPlaying.clock(s.durationMs());
+            float nw = textW(Face.MONO, now, 5f), ttw = textW(Face.MONO, total, 5f);
+            text(Face.MONO, now, bx0, by0 - 2f, 5f, TEXT_2, Align.LEFT);
+            text(Face.MONO, total, bx1, by0 - 2f, 5f, TEXT_3, Align.RIGHT);
+            float px0 = bx0 + nw + 6f, px1 = bx1 - ttw - 6f;
+            rect(px0, by0, px1, by0 + 2f, 1f, 0x26FFFFFF);
+            float p = clamp(pos / (float) s.durationMs(), 0f, 1f);
+            if (p > 0.005f) rect(px0, by0, px0 + (px1 - px0) * p, by0 + 2f, 1f, accent);
+        } else {
+            rect(bx0, by0, bx1, by0 + 2f, 1f, 0x26FFFFFF);
+        }
+
         boolean overPlay = inside(pcx - pr, cy - pr, pcx + pr, cy + pr);
         float hp = anim("music:play", overPlay);
-        Overlay.circle(pcx * u, cy * u, pr * u, c(mix(ACCENT, 0xFFF0676B, hp)));
-        float is = 8f;
-        Overlay.icon(playing ? "pause" : "play", (pcx - is / 2f + (playing ? 0f : 0.6f)) * u, (cy - is / 2f) * u, is * u, c(0xFFFFFFFF));
+        Overlay.circle(pcx * u, cy * u, pr * u, c(mix(0xFFFFFFFF, 0xFFE4E4E7, hp)));
+        float is = 7.5f;
+        Overlay.icon(playing ? "pause" : "play", (pcx - is / 2f + (playing ? 0f : 0.6f)) * u, (cy - is / 2f) * u, is * u, c(0xFF0E0E10));
         hit(pcx - pr, cy - pr, pcx + pr, cy + pr, () -> NowPlaying.send(NowPlaying.Command.TOGGLE));
         if (overPlay) tooltip = playing ? "Pause" : "Play";
         smallIcon("next", pcx + pr + 4f, cy, "Next", () -> NowPlaying.send(NowPlaying.Command.NEXT));

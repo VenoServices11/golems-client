@@ -560,7 +560,7 @@ public final class MainMenu extends MenuScreen {
         text(Face.MONO, ms, x1 - 10f, fy0 + 11f - 6.5f * 0.62f, 6.5f, TEXT_2, Align.RIGHT);
 
         // what's playing
-        drawMusic(x0, fy0 - 6f - 46f, x1, fy0 - 6f);
+        drawMusic(x0, fy0 - 6f - MUSIC_H, x1, fy0 - 6f);
     }
 
 
