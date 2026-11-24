@@ -26,7 +26,7 @@ public final class LoadingScreen {
      * Where one half of Mojang's logo would have gone, and how visible (0..1). The logo is drawn in two halves, left
      * then right; on the right half, the G and the name are drawn centred over the whole logo's place.
      */
-    public static void logoHalf(int x, int y, int width, int height, float alpha) {
+    public static void logoHalf(net.minecraft.client.gui.GuiGraphics g, int x, int y, int width, int height, float alpha) {
         if (Float.isNaN(firstHalfX)) {
             firstHalfX = x;
             return;
@@ -36,6 +36,15 @@ public final class LoadingScreen {
         firstHalfX = Float.NaN;
         if (alpha <= 0.01f) return;
 
+        Overlay.begin(g);
+        try {
+            drawLogo(x0, x1, y, height, alpha);
+        } finally {
+            Overlay.end();
+        }
+    }
+
+    private static void drawLogo(float x0, float x1, int y, int height, float alpha) {
         float h = height;
         float mid = y + h / 2f;
         float g = h * 0.95f;
@@ -50,8 +59,17 @@ public final class LoadingScreen {
     }
 
     /** The progress bar's place, how far loading is (0..1) and the bar's opacity (0..1): the bar and a tip. */
-    public static void progress(int x0, int y0, int x1, int y1, float progress, float opacity) {
+    public static void progress(net.minecraft.client.gui.GuiGraphics g, int x0, int y0, int x1, int y1, float progress, float opacity) {
         if (opacity <= 0.01f) return;
+        Overlay.begin(g);
+        try {
+            drawProgress(x0, y0, x1, y1, progress, opacity);
+        } finally {
+            Overlay.end();
+        }
+    }
+
+    private static void drawProgress(int x0, int y0, int x1, int y1, float progress, float opacity) {
         float cx = (x0 + x1) / 2f;
         float cy = (y0 + y1) / 2f;
 

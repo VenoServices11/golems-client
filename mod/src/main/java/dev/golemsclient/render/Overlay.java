@@ -1,87 +1,226 @@
 package dev.golemsclient.render;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.textures.GpuSampler;
+import com.mojang.blaze3d.textures.GpuTextureView;
 import dev.golemsclient.GolemsClient;
-import imgui.ImDrawList;
-import imgui.ImFont;
-import imgui.ImGui;
-import imgui.ImGuiIO;
-import imgui.ImVec2;
-import imgui.flag.ImGuiConfigFlags;
-import imgui.gl3.ImGuiImplGl3;
-import imgui.glfw.ImGuiImplGlfw;
 import net.minecraft.client.Minecraft;
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL30;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.render.TextureSetup;
+import net.minecraft.client.gui.render.state.BlitRenderState;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
+import org.joml.Matrix3x2f;
+import org.lwjgl.stb.STBTTAlignedQuad;
+import org.lwjgl.system.MemoryStack;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.FloatBuffer;
 
 /**
- * Golem's Client's smooth text, shapes and images, drawn with Dear ImGui on top of the finished frame at the window's
- * real resolution. Screens record what they want in GUI pixels while Minecraft draws; {@link #renderFrame()} (called
- * right before the frame is shown) draws it all, in order, and forgets it. Nothing here may crash the game: if ImGui
- * keeps failing it switches itself off and the game looks vanilla.
+ * Golem's Client's drawing: smooth text, rounded cards, outlines, circles, icons and pictures, all through
+ * Minecraft's own renderer (so it works on OpenGL and Vulkan, and with Iris and Sodium), and in the order they are
+ * drawn. Coordinates and sizes are in GUI pixels (floats); shapes are snapped to real pixels so edges stay crisp.
+ * A screen calls {@link #begin} with its GuiGraphics before drawing and {@link #end} after.
  */
 public final class Overlay {
     public enum Face { REGULAR, MEDIUM, SEMIBOLD, BOLD, MONO }
 
     public enum Align { LEFT, CENTER, RIGHT }
 
-    private record Text(Face face, String s, float x, float y, float size, int argb, Align align) { }
+    /** Text positions are kept to a quarter of a real pixel. */
+    private static final int SUB = 4;
 
-    private record Rect(float x0, float y0, float x1, float y1, float radius, int argb) { }
-
-    private record Image(String path, float x0, float y0, float x1, float y1, int argb) { }
-
-    private record Outline(float x0, float y0, float x1, float y1, float radius, int argb, float thickness) { }
-
-    private record Circle(float cx, float cy, float r, int argb, boolean filled, float thickness) { }
-
-    private record Line(float x0, float y0, float x1, float y1, int argb, float thickness) { }
-
-    private record Tex(int id, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, int argb,
-                       float radius) { }
-
-    private record Clip(float x0, float y0, float x1, float y1) { }
-
-    private record Unclip() { }
-
-    private static final List<Object> OPS = new ArrayList<>();
-    private static final ImGuiImplGlfw GLFW_IMPL = new ImGuiImplGlfw();
-    private static final ImGuiImplGl3 GL3_IMPL = new ImGuiImplGl3();
-
-    private static boolean ready;
-    /** Our own ImGui context, so other mods that use ImGui (Golem's Utils...) keep theirs. */
-    private static imgui.internal.ImGuiContext context;
-    private static boolean firstFrameLogged;
-    private static boolean failed;
-    private static int failures;
+    private static GuiGraphics g;
+    private static int scale = 1;
+    private static int depth;
+    private static long frameMark;
+    private static GpuSampler pixelSampler;
 
     private Overlay() {
     }
 
-    /** False once ImGui has switched itself off; callers can then fall back to Minecraft's own drawing. */
+    /** Always true now (kept for callers from the ImGui days). */
     public static boolean available() {
-        return !failed;
+        return true;
     }
 
-    // ------------------------------------------------------------------ recording (GUI pixels)
+    /** Starts drawing into this GuiGraphics (nestable). */
+    public static void begin(GuiGraphics graphics) {
+        if (depth++ == 0) {
+            g = graphics;
+            scale = Math.max(1, Minecraft.getInstance().getWindow().getGuiScale());
+            // pictures let go are freed in two steps, at least a tenth of a second apart, so none is still in use
+            long now = System.nanoTime();
+            if (now - frameMark > 100_000_000L) {
+                frameMark = now;
+                Textures.frame();
+            }
+        }
+    }
+
+    public static void end() {
+        if (depth > 0 && --depth == 0) g = null;
+    }
+
+    /** Real (window) pixels per GUI pixel. */
+    public static int scale() {
+        return g != null ? scale : Math.max(1, Minecraft.getInstance().getWindow().getGuiScale());
+    }
+
+    // ------------------------------------------------------------------ text
 
     public static void text(Face face, String s, float x, float y, float size, int argb, Align align) {
-        if (failed || s == null || s.isEmpty() || (argb >>> 24) == 0) return;
-        OPS.add(new Text(face, s, x, y, size, argb, align));
+        if (g == null || s == null || s.isEmpty() || (argb >>> 24) == 0) return;
+        int px = Math.max(5, Math.round(size * scale));
+        Fonts.Sheet sheet = Fonts.sheet(face, px);
+        if (sheet == null) return;
+        float left = x * scale;
+        if (align != Align.LEFT) {
+            float w = advance(sheet, s);
+            left -= align == Align.RIGHT ? w : w / 2f;
+        }
+        float baseline = Math.round(y * scale + sheet.ascent);
+        left = Math.round(left);
+        g.pose().pushMatrix();
+        g.pose().scale(1f / (scale * SUB), 1f / (scale * SUB));
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            FloatBuffer px0 = stack.floats(left), py0 = stack.floats(baseline);
+            STBTTAlignedQuad q = STBTTAlignedQuad.malloc(stack);
+            GpuTextureView view = sheet.texture.getTextureView();
+            GpuSampler sampler = sheet.texture.getSampler();
+            for (int i = 0; i < s.length(); ) {
+                int cp = s.codePointAt(i);
+                i += Character.charCount(cp);
+                if (!sheet.quad(cp, px0, py0, q)) sheet.quad('?', px0, py0, q);
+                if (cp == ' ') continue;
+                submit(view, sampler, Math.round(q.x0() * SUB), Math.round(q.y0() * SUB), Math.round(q.x1() * SUB),
+                        Math.round(q.y1() * SUB), q.s0(), q.s1(), q.t0(), q.t1(), argb);
+            }
+        } finally {
+            g.pose().popMatrix();
+        }
     }
 
-    public static void rect(float x0, float y0, float x1, float y1, float radius, int argb) {
-        if (failed || (argb >>> 24) == 0 || x1 <= x0 || y1 <= y0) return;
-        OPS.add(new Rect(x0, y0, x1, y1, radius, argb));
+    /** Text width in GUI pixels. */
+    public static float width(Face face, String s, float size) {
+        if (s == null || s.isEmpty()) return 0f;
+        int sc = scale();
+        Fonts.Sheet sheet = Fonts.sheet(face, Math.max(5, Math.round(size * sc)));
+        if (sheet == null) return s.length() * size * 0.55f;
+        return advance(sheet, s) / sc;
     }
+
+    private static float advance(Fonts.Sheet sheet, String s) {
+        float w = 0f;
+        for (int i = 0; i < s.length(); ) {
+            int cp = s.codePointAt(i);
+            i += Character.charCount(cp);
+            w += sheet.advance(cp);
+        }
+        return w;
+    }
+
+    // ------------------------------------------------------------------ shapes
+
+    /** A filled rectangle with rounded corners (radius in GUI pixels; 0 for square). */
+    public static void rect(float x0, float y0, float x1, float y1, float radius, int argb) {
+        if (g == null || (argb >>> 24) == 0 || x1 <= x0 || y1 <= y0) return;
+        int X0 = Math.round(x0 * scale), Y0 = Math.round(y0 * scale), X1 = Math.round(x1 * scale), Y1 = Math.round(y1 * scale);
+        if (X1 <= X0 || Y1 <= Y0) return;
+        int r = Math.min(Math.round(radius * scale), Math.min((X1 - X0) / 2, (Y1 - Y0) / 2));
+        pixels();
+        try {
+            if (r < 1) {
+                g.fill(X0, Y0, X1, Y1, argb);
+                return;
+            }
+            corners(Textures.corner(r, 0), X0, Y0, X1, Y1, r, argb);
+            if (X1 - X0 > 2 * r) {
+                g.fill(X0 + r, Y0, X1 - r, Y0 + r, argb);
+                g.fill(X0 + r, Y1 - r, X1 - r, Y1, argb);
+            }
+            if (Y1 - Y0 > 2 * r) g.fill(X0, Y0 + r, X1, Y1 - r, argb);
+        } finally {
+            g.pose().popMatrix();
+        }
+    }
+
+    /** A rounded rectangle's border; thickness in GUI pixels (at least one real pixel). */
+    public static void outline(float x0, float y0, float x1, float y1, float radius, int argb, float thickness) {
+        if (g == null || (argb >>> 24) == 0 || x1 <= x0 || y1 <= y0) return;
+        int X0 = Math.round(x0 * scale), Y0 = Math.round(y0 * scale), X1 = Math.round(x1 * scale), Y1 = Math.round(y1 * scale);
+        int t = Math.max(1, Math.round(thickness * scale));
+        if (X1 - X0 < 2 * t || Y1 - Y0 < 2 * t) {
+            rect(x0, y0, x1, y1, radius, argb);
+            return;
+        }
+        int r = Math.min(Math.round(radius * scale), Math.min((X1 - X0) / 2, (Y1 - Y0) / 2));
+        pixels();
+        try {
+            if (r <= t) {
+                g.fill(X0, Y0, X1, Y0 + t, argb);
+                g.fill(X0, Y1 - t, X1, Y1, argb);
+                g.fill(X0, Y0 + t, X0 + t, Y1 - t, argb);
+                g.fill(X1 - t, Y0 + t, X1, Y1 - t, argb);
+                return;
+            }
+            corners(Textures.corner(r, t), X0, Y0, X1, Y1, r, argb);
+            g.fill(X0 + r, Y0, X1 - r, Y0 + t, argb);
+            g.fill(X0 + r, Y1 - t, X1 - r, Y1, argb);
+            g.fill(X0, Y0 + r, X0 + t, Y1 - r, argb);
+            g.fill(X1 - t, Y0 + r, X1, Y1 - r, argb);
+        } finally {
+            g.pose().popMatrix();
+        }
+    }
+
+    public static void circle(float cx, float cy, float r, int argb) {
+        disc(cx, cy, r, argb, 0f);
+    }
+
+    public static void ring(float cx, float cy, float r, int argb, float thickness) {
+        disc(cx, cy, r, argb, Math.max(thickness, 1f / scale));
+    }
+
+    private static void disc(float cx, float cy, float r, int argb, float thickness) {
+        if (g == null || (argb >>> 24) == 0 || r <= 0f) return;
+        int R = Math.max(1, Math.round(r * scale));
+        int CX = Math.round(cx * scale), CY = Math.round(cy * scale);
+        int t = thickness > 0f ? Math.max(1, Math.round(thickness * scale)) : 0;
+        pixels();
+        try {
+            corners(Textures.corner(R, t), CX - R, CY - R, CX + R, CY + R, R, argb);
+        } finally {
+            g.pose().popMatrix();
+        }
+    }
+
+    /** A straight line; only horizontal and vertical ones are drawn sharp. */
+    public static void line(float x0, float y0, float x1, float y1, int argb, float thickness) {
+        float h = Math.max(thickness, 1f / scale()) / 2f;
+        if (Math.abs(y1 - y0) < Math.abs(x1 - x0)) rect(Math.min(x0, x1), y0 - h, Math.max(x0, x1), y0 + h, 0f, argb);
+        else rect(x0 - h, Math.min(y0, y1), x0 + h, Math.max(y0, y1), 0f, argb);
+    }
+
+    /** A vertical gradient from top to bottom colour. */
+    public static void gradient(float x0, float y0, float x1, float y1, int top, int bottom) {
+        if (g == null) return;
+        pixels();
+        try {
+            g.fillGradient(Math.round(x0 * scale), Math.round(y0 * scale), Math.round(x1 * scale), Math.round(y1 * scale), top, bottom);
+        } finally {
+            g.pose().popMatrix();
+        }
+    }
+
+    // ------------------------------------------------------------------ pictures
 
     /** A PNG from the mod's jar (for example "/assets/golemsclient/textures/logo.png"), tinted by argb. */
     public static void image(String path, float x0, float y0, float x1, float y1, int argb) {
-        if (failed || (argb >>> 24) == 0) return;
-        OPS.add(new Image(path, x0, y0, x1, y1, argb));
+        if (g == null || (argb >>> 24) == 0 || x1 <= x0 || y1 <= y0) return;
+        GuiTexture t = Textures.resource(path, Math.round((x1 - x0) * scale), Math.round((y1 - y0) * scale));
+        if (t != null) texture(t, x0, y0, x1, y1, 0f, 0f, 1f, 1f, argb);
     }
 
     /** One of the mod's icons (assets/golemsclient/textures/icons/NAME.png), white tinted by argb, size x size. */
@@ -89,229 +228,79 @@ public final class Overlay {
         image("/assets/golemsclient/textures/icons/" + name + ".png", x, y, x + size, y + size, argb);
     }
 
-    /** A rounded rectangle's border, thickness in GUI pixels. */
-    public static void outline(float x0, float y0, float x1, float y1, float radius, int argb, float thickness) {
-        if (failed || (argb >>> 24) == 0 || x1 <= x0 || y1 <= y0) return;
-        OPS.add(new Outline(x0, y0, x1, y1, radius, argb, thickness));
+    /** Part of a texture made by Golem's Client (from (u0, v0) to (u1, v1)). */
+    public static void texture(GuiTexture t, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, int argb) {
+        if (g == null || t == null || (argb >>> 24) == 0) return;
+        draw(t.getTextureView(), t.getSampler(), x0, y0, x1, y1, u0, v0, u1, v1, argb);
     }
 
-    public static void circle(float cx, float cy, float r, int argb) {
-        if (failed || (argb >>> 24) == 0 || r <= 0) return;
-        OPS.add(new Circle(cx, cy, r, argb, true, 0f));
+    /** Part of one of Minecraft's textures (a skin), crisp. */
+    public static void minecraft(Identifier id, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, int argb) {
+        if (g == null || (argb >>> 24) == 0) return;
+        try {
+            var t = Minecraft.getInstance().getTextureManager().getTexture(id);
+            if (pixelSampler == null) pixelSampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
+            draw(t.getTextureView(), pixelSampler, x0, y0, x1, y1, u0, v0, u1, v1, argb);
+        } catch (Exception ignored) {
+            // not loaded yet
+        }
     }
 
-    public static void ring(float cx, float cy, float r, int argb, float thickness) {
-        if (failed || (argb >>> 24) == 0 || r <= 0) return;
-        OPS.add(new Circle(cx, cy, r, argb, false, thickness));
+    private static void draw(GpuTextureView view, GpuSampler sampler, float x0, float y0, float x1, float y1, float u0, float v0,
+                             float u1, float v1, int argb) {
+        pixels();
+        try {
+            submit(view, sampler, Math.round(x0 * scale), Math.round(y0 * scale), Math.round(x1 * scale), Math.round(y1 * scale),
+                    u0, u1, v0, v1, argb);
+        } finally {
+            g.pose().popMatrix();
+        }
     }
 
-    public static void line(float x0, float y0, float x1, float y1, int argb, float thickness) {
-        if (failed || (argb >>> 24) == 0) return;
-        OPS.add(new Line(x0, y0, x1, y1, argb, thickness));
-    }
-
-    /** An OpenGL texture (by id), the part between (u0, v0) and (u1, v1), with rounded corners. */
-    public static void texture(int id, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1,
-                               int argb, float radius) {
-        if (failed || id <= 0 || (argb >>> 24) == 0) return;
-        OPS.add(new Tex(id, x0, y0, x1, y1, u0, v0, u1, v1, argb, radius));
-    }
+    // ------------------------------------------------------------------ clipping
 
     /** Draws only inside this rectangle until {@link #unclip()}. */
     public static void clip(float x0, float y0, float x1, float y1) {
-        if (failed) return;
-        OPS.add(new Clip(x0, y0, x1, y1));
+        if (g == null) return;
+        g.enableScissor((int) Math.floor(x0), (int) Math.floor(y0), (int) Math.ceil(x1), (int) Math.ceil(y1));
     }
 
     public static void unclip() {
-        if (failed) return;
-        OPS.add(new Unclip());
+        if (g == null) return;
+        g.disableScissor();
     }
 
-    /** Text width in GUI pixels, for centring; an estimate until the fonts are ready. */
-    public static float width(Face face, String s, float size) {
-        ImFont f = ready ? Fonts.pick(face, size * guiScale()) : null;
-        if (f == null) return s.length() * size * 0.55f;
-        float px = size * guiScale();
-        return f.calcTextSizeAX(px, Float.MAX_VALUE, 0f, s) / guiScale();
+    // ------------------------------------------------------------------ internals
+
+    /** Pushes a pose in which one unit is one real pixel. */
+    private static void pixels() {
+        g.pose().pushMatrix();
+        g.pose().scale(1f / scale, 1f / scale);
     }
 
-    private static float guiScale() {
-        var w = Minecraft.getInstance().getWindow();
-        int gh = w.getGuiScaledHeight();
-        return gh > 0 ? (float) w.getHeight() / gh : 1f;
+    /** The four corners of a shape, from a top-left corner piece, flipped for the others. */
+    private static void corners(GuiTexture c, int X0, int Y0, int X1, int Y1, int r, int argb) {
+        GpuTextureView v = c.getTextureView();
+        GpuSampler s = c.getSampler();
+        submit(v, s, X0, Y0, X0 + r, Y0 + r, 0f, 1f, 0f, 1f, argb);
+        submit(v, s, X1 - r, Y0, X1, Y0 + r, 1f, 0f, 0f, 1f, argb);
+        submit(v, s, X0, Y1 - r, X0 + r, Y1, 0f, 1f, 1f, 0f, argb);
+        submit(v, s, X1 - r, Y1 - r, X1, Y1, 1f, 0f, 1f, 0f, argb);
     }
 
-    // ------------------------------------------------------------------ drawing
-
-    public static void renderFrame() {
-        if (failed || OPS.isEmpty()) {
-            OPS.clear();
-            Textures.releasePending();
-            return;
-        }
-        int previousFbo = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
-        imgui.internal.ImGuiContext previousContext = null;
+    private static void submit(GpuTextureView view, GpuSampler sampler, int x0, int y0, int x1, int y1, float u0, float u1,
+                               float v0, float v1, int argb) {
         try {
-            previousContext = ImGui.getCurrentContext();
-            if (!ready) init();
-            ImGui.setCurrentContext(context);
-            Minecraft mc = Minecraft.getInstance();
-            float gw = mc.getWindow().getGuiScaledWidth();
-            float gh = mc.getWindow().getGuiScaledHeight();
-            if (gw <= 0 || gh <= 0) return;
-
-            GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            ImGuiIO io = ImGui.getIO();
-            if (Fonts.rebuildFor(io, mc.getWindow().getHeight() / gh)) {
-                GL3_IMPL.destroyFontsTexture();
-                GL3_IMPL.createFontsTexture();
-            }
-            GL3_IMPL.newFrame();
-            GLFW_IMPL.newFrame();
-            ImGui.newFrame();
-
-            ImVec2 size = io.getDisplaySize();
-            draw(ImGui.getBackgroundDrawList(), size.x / gw, size.y / gh);
-
-            ImGui.render();
-            GL3_IMPL.renderDrawData(ImGui.getDrawData());
-            failures = 0;
-            if (!firstFrameLogged) {
-                firstFrameLogged = true;
-                GolemsClient.LOGGER.info("Overlay drew its first frame ({} things, window {}x{})", OPS.size(),
-                        mc.getWindow().getWidth(), mc.getWindow().getHeight());
-            }
-        } catch (Throwable t) {
-            if (++failures >= 3) {
-                failed = true;
-                GolemsClient.LOGGER.error("Golem's Client's overlay keeps failing; it's off for this session", t);
-            } else {
-                GolemsClient.LOGGER.error("Golem's Client's overlay failed; starting it again", t);
-                restart();
-            }
-        } finally {
-            OPS.clear();
-            Textures.releasePending();
-            try {
-                if (previousContext != null && previousContext.ptr != 0 && context != null && previousContext.ptr != context.ptr) {
-                    ImGui.setCurrentContext(previousContext);
-                }
-            } catch (Throwable ignored) {
-            }
-            try {
-                GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
-            } catch (Throwable ignored) {
+            g.guiRenderState.submitGuiElement(new BlitRenderState(RenderPipelines.GUI_TEXTURED,
+                    TextureSetup.singleTexture(view, sampler), new Matrix3x2f(g.pose()), x0, y0, x1, y1, u0, u1, v0, v1, argb,
+                    g.scissorStack.peek()));
+        } catch (RuntimeException e) {
+            if (!warned) {
+                warned = true;
+                GolemsClient.LOGGER.error("Golem's Client couldn't draw something", e);
             }
         }
     }
 
-    private static void draw(ImDrawList dl, float fx, float fy) {
-        int clips = 0;
-        for (Object op : OPS) {
-            if (op instanceof Rect r) {
-                dl.addRectFilled(r.x0() * fx, r.y0() * fy, r.x1() * fx, r.y1() * fy, abgr(r.argb()), r.radius() * fy);
-            } else if (op instanceof Image im) {
-                int tex = Textures.get(im.path());
-                if (tex != 0) {
-                    dl.addImage(tex, im.x0() * fx, im.y0() * fy, im.x1() * fx, im.y1() * fy, 0f, 0f, 1f, 1f, abgr(im.argb()));
-                }
-            } else if (op instanceof Outline o) {
-                dl.addRect(o.x0() * fx, o.y0() * fy, o.x1() * fx, o.y1() * fy, abgr(o.argb()), o.radius() * fy, 0,
-                        Math.max(1f, o.thickness() * fy));
-            } else if (op instanceof Circle c) {
-                if (c.filled()) dl.addCircleFilled(c.cx() * fx, c.cy() * fy, c.r() * fy, abgr(c.argb()));
-                else dl.addCircle(c.cx() * fx, c.cy() * fy, c.r() * fy, abgr(c.argb()), 0, Math.max(1f, c.thickness() * fy));
-            } else if (op instanceof Line l) {
-                dl.addLine(l.x0() * fx, l.y0() * fy, l.x1() * fx, l.y1() * fy, abgr(l.argb()), Math.max(1f, l.thickness() * fy));
-            } else if (op instanceof Tex t) {
-                Textures.prepareForeign(t.id());
-                if (t.radius() > 0f) {
-                    dl.addImageRounded(t.id(), t.x0() * fx, t.y0() * fy, t.x1() * fx, t.y1() * fy, t.u0(), t.v0(), t.u1(),
-                            t.v1(), abgr(t.argb()), t.radius() * fy);
-                } else {
-                    dl.addImage(t.id(), t.x0() * fx, t.y0() * fy, t.x1() * fx, t.y1() * fy, t.u0(), t.v0(), t.u1(), t.v1(),
-                            abgr(t.argb()));
-                }
-            } else if (op instanceof Clip c) {
-                dl.pushClipRect(c.x0() * fx, c.y0() * fy, c.x1() * fx, c.y1() * fy, true);
-                clips++;
-            } else if (op instanceof Unclip) {
-                if (clips > 0) {
-                    dl.popClipRect();
-                    clips--;
-                }
-            } else if (op instanceof Text t) {
-                int px = Math.max(4, Math.round(t.size() * fy));
-                ImFont f = Fonts.pick(t.face(), px);
-                if (f == null) continue;
-                float x = t.x() * fx;
-                if (t.align() != Align.LEFT) {
-                    float w = f.calcTextSizeAX(px, Float.MAX_VALUE, 0f, t.s());
-                    x -= t.align() == Align.RIGHT ? w : w / 2f;
-                }
-                dl.addText(f, px, x, t.y() * fy, abgr(t.argb()), t.s());
-            }
-        }
-        while (clips-- > 0) dl.popClipRect();
-    }
-
-    private static void init() {
-        long window = GLFW.glfwGetCurrentContext();
-        context = ImGui.createContext();
-        ImGui.setCurrentContext(context);
-        // ImGui's own checks are logged instead of closing the game (imgui-java's default)
-        ImGui.setAssertCallback(new imgui.assertion.ImAssertCallback() {
-            private int logged;
-
-            @Override
-            public void imAssert(String assertion, int line, String file) {
-                imAssertCallback(assertion, line, file);
-            }
-
-            @Override
-            public void imAssertCallback(String assertion, int line, String file) {
-                if (logged++ < 10) GolemsClient.LOGGER.warn("ImGui check failed: {} ({}:{})", assertion, file, line);
-            }
-        });
-        ImGuiIO io = ImGui.getIO();
-        io.setIniFilename(null);
-        io.addConfigFlags(ImGuiConfigFlags.NoMouseCursorChange);
-        ImGui.getStyle().setAntiAliasedFill(true);
-        ImGui.getStyle().setAntiAliasedLines(true);
-        ImGui.getStyle().setCircleTessellationMaxError(0.12f);
-        // no input callbacks: the overlay only draws (screens that need the mouse come with the main menu)
-        GLFW_IMPL.init(window, false);
-        Fonts.rebuildFor(io, 2f);
-        GL3_IMPL.init("#version 150");
-        ready = true;
-        GolemsClient.LOGGER.info("Overlay ready");
-    }
-
-    private static void restart() {
-        try {
-            GL3_IMPL.shutdown();
-        } catch (Throwable ignored) {
-        }
-        try {
-            GLFW_IMPL.shutdown();
-        } catch (Throwable ignored) {
-        }
-        try {
-            if (context != null) ImGui.destroyContext(context);
-        } catch (Throwable ignored) {
-        }
-        context = null;
-        Textures.forget();
-        Fonts.forget();
-        ready = false;
-    }
-
-    static int abgr(int argb) {
-        int a = (argb >>> 24) & 0xFF;
-        int r = (argb >> 16) & 0xFF;
-        int g = (argb >> 8) & 0xFF;
-        int b = argb & 0xFF;
-        return (a << 24) | (b << 16) | (g << 8) | r;
-    }
+    private static boolean warned;
 }

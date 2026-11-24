@@ -14,19 +14,6 @@ dependencies {
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-    // Dear ImGui (imgui-java) draws the client's smooth text and shapes; bundled in the jar
-    def imgui = "1.90.0"
-    [
-        "io.github.spair:imgui-java-binding:${imgui}",
-        "io.github.spair:imgui-java-lwjgl3:${imgui}",
-        "io.github.spair:imgui-java-natives-windows:${imgui}",
-        "io.github.spair:imgui-java-natives-linux:${imgui}",
-        "io.github.spair:imgui-java-natives-macos:${imgui}"
-    ].each { dep ->
-        implementation(dep) { transitive = false }
-        include(dep) { transitive = false }
-    }
 }
 
 processResources {

@@ -1,8 +1,6 @@
 package dev.golemsclient.menu;
 
-import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
-import com.mojang.blaze3d.textures.GpuTexture;
 import dev.golemsclient.GolemsClient;
 import dev.golemsclient.media.MediaSession;
 import dev.golemsclient.media.NowPlaying;
@@ -95,7 +93,8 @@ abstract class MenuScreen extends net.minecraft.client.gui.screens.Screen {
     }
 
     /** Measures the canvas and the mouse, steps the animations, and forgets last frame's clickable areas. */
-    protected void beginFrame(int mouseX, int mouseY) {
+    protected void beginFrame(GuiGraphics g, int mouseX, int mouseY) {
+        Overlay.begin(g);
         var window = minecraft.getWindow();
         u = window.getGuiScaledHeight() / H;
         w = window.getGuiScaledWidth() / u;
@@ -115,6 +114,7 @@ abstract class MenuScreen extends net.minecraft.client.gui.screens.Screen {
         drawToast();
         drawTooltip();
         if (pointer) g.requestCursor(CursorTypes.POINTING_HAND);
+        Overlay.end();
     }
 
     /** Runs the clickable area under the mouse (with a soft click); false if there is none. */
@@ -136,9 +136,9 @@ abstract class MenuScreen extends net.minecraft.client.gui.screens.Screen {
         card(x0, y0, x1, y1);
         MediaSession.Snapshot s = NowPlaying.get();
         float art = 30f, ax = x0 + 8f, ay = y0 + 8f;
-        int tex = s != null && s.hasThumbnail() ? albumArt(s) : 0;
-        if (tex > 0) {
-            Overlay.texture(tex, ax * u, ay * u, (ax + art) * u, (ay + art) * u, 0f, 0f, 1f, 1f, c(0xFFFFFFFF), 4f * u);
+        dev.golemsclient.render.GuiTexture tex = s != null && s.hasThumbnail() ? albumArt(s) : null;
+        if (tex != null) {
+            Overlay.texture(tex, ax * u, ay * u, (ax + art) * u, (ay + art) * u, 0f, 0f, 1f, 1f, c(0xFFFFFFFF));
         } else {
             rect(ax, ay, ax + art, ay + art, 4f, 0xFF1F1F24);
             Overlay.icon(s == null ? "volume" : "play", (ax + 9f) * u, (ay + 9f) * u, 12f * u, c(TEXT_3));
@@ -176,12 +176,12 @@ abstract class MenuScreen extends net.minecraft.client.gui.screens.Screen {
         smallIcon("prev", pcx - pr - 12f, cy, "Previous", () -> NowPlaying.send(NowPlaying.Command.PREVIOUS));
     }
 
-    protected int albumArt(MediaSession.Snapshot s) {
+    protected dev.golemsclient.render.GuiTexture albumArt(MediaSession.Snapshot s) {
         if (s.thumbnailVersion() != albumArtVersion) {
             Textures.release("album:" + albumArtVersion);
             albumArtVersion = s.thumbnailVersion();
         }
-        return Textures.image("album:" + albumArtVersion, s.thumbnail(), false);
+        return Textures.image("album:" + albumArtVersion, s.thumbnail(), false, 0.14f);
     }
 
     protected void smallIcon(String icon, float x, float cy, String tip, Runnable action) {
@@ -217,26 +217,11 @@ abstract class MenuScreen extends net.minecraft.client.gui.screens.Screen {
         return cx - 2f * r - 4f;
     }
 
+    /** Your face (with the hat layer), from your skin. */
     protected void drawHead(float x, float y, float s, float radius) {
-        int tex = skinTexture();
-        if (tex > 0) {
-            float r = radius * u;
-            Overlay.texture(tex, x * u, y * u, (x + s) * u, (y + s) * u, 8f / 64f, 8f / 64f, 16f / 64f, 16f / 64f, c(0xFFFFFFFF), r);
-            Overlay.texture(tex, x * u, y * u, (x + s) * u, (y + s) * u, 40f / 64f, 8f / 64f, 48f / 64f, 16f / 64f, c(0xFFFFFFFF), r);
-        } else {
-            letterTile(minecraft.getUser().getName(), x, y, s);
-        }
-    }
-
-    /** The GL texture of your skin, or 0 while it loads. */
-    protected int skinTexture() {
-        try {
-            var texture = minecraft.getTextureManager().getTexture(skin().get().body().texturePath());
-            GpuTexture gpu = texture.getTexture();
-            return gpu instanceof GlTexture gl && !gl.isClosed() ? gl.glId() : 0;
-        } catch (Exception e) {
-            return 0;
-        }
+        net.minecraft.resources.Identifier tex = skin().get().body().texturePath();
+        Overlay.minecraft(tex, x * u, y * u, (x + s) * u, (y + s) * u, 8f / 64f, 8f / 64f, 16f / 64f, 16f / 64f, c(0xFFFFFFFF));
+        Overlay.minecraft(tex, x * u, y * u, (x + s) * u, (y + s) * u, 40f / 64f, 8f / 64f, 48f / 64f, 16f / 64f, c(0xFFFFFFFF));
     }
 
     protected void letterTile(String name, float x, float y, float s) {

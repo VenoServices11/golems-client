@@ -39,7 +39,7 @@ public final class PauseMenu extends MenuScreen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        beginFrame(mouseX, mouseY);
+        beginFrame(g, mouseX, mouseY);
         float slide = (1f - fade) * 8f;
 
         boolean lan = minecraft.hasSingleplayerServer() && minecraft.getSingleplayerServer() != null

@@ -1,8 +1,6 @@
 package dev.golemsclient.menu;
 
-import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
-import com.mojang.blaze3d.textures.GpuTexture;
 import dev.golemsclient.GolemsClient;
 import dev.golemsclient.media.MediaSession;
 import dev.golemsclient.media.NowPlaying;
@@ -170,7 +168,7 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        beginFrame(mouseX, mouseY);
+        beginFrame(g, mouseX, mouseY);
         if (dev.golemsclient.DevShots.ON) {
             socialOpen = devSocial;
             if (devTab >= 0) {
@@ -546,10 +544,10 @@ public final class MainMenu extends MenuScreen {
             y = iconAt[1];
             s = iconAt[2];
         }
-        int tex = 0;
-        if (png != null) tex = Textures.image("server:" + server.ip + ":" + java.util.Arrays.hashCode(png), png, true);
-        if (tex > 0) {
-            Overlay.texture(tex, x * u, y * u, (x + s) * u, (y + s) * u, 0f, 0f, 1f, 1f, c(0xFFFFFFFF), Math.min(6f, s * 0.2f) * u);
+        dev.golemsclient.render.GuiTexture tex = null;
+        if (png != null) tex = Textures.image("server:" + server.ip + ":" + java.util.Arrays.hashCode(png), png, true, 0.18f);
+        if (tex != null) {
+            Overlay.texture(tex, x * u, y * u, (x + s) * u, (y + s) * u, 0f, 0f, 1f, 1f, c(0xFFFFFFFF));
         } else {
             letterTile(server.name, x, y, s);
         }
@@ -562,9 +560,9 @@ public final class MainMenu extends MenuScreen {
             s = iconAt[2];
         }
         String key = "world:" + world.getLevelId();
-        int tex;
+        dev.golemsclient.render.GuiTexture tex;
         if (Textures.has(key)) {
-            tex = Textures.image(key, null, true);
+            tex = Textures.image(key, null, true, 0.18f);
         } else {
             byte[] png = null;
             try {
@@ -572,10 +570,10 @@ public final class MainMenu extends MenuScreen {
                 if (icon != null && Files.isRegularFile(icon) && Files.size(icon) < 1_000_000) png = Files.readAllBytes(icon);
             } catch (Exception ignored) {
             }
-            tex = Textures.image(key, png, true);
+            tex = Textures.image(key, png, true, 0.18f);
         }
-        if (tex > 0) {
-            Overlay.texture(tex, x * u, y * u, (x + s) * u, (y + s) * u, 0f, 0f, 1f, 1f, c(0xFFFFFFFF), Math.min(6f, s * 0.2f) * u);
+        if (tex != null) {
+            Overlay.texture(tex, x * u, y * u, (x + s) * u, (y + s) * u, 0f, 0f, 1f, 1f, c(0xFFFFFFFF));
         } else {
             letterTile(world.getLevelName(), x, y, s);
         }

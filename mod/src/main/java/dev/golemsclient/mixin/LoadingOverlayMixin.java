@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * The loading screen in Golem's Client's look: Mojang's logo and white bar are skipped, and {@link LoadingScreen}
- * draws the G, the name, a red progress bar and a tip in their place (on top of the frame, with smooth text).
+ * draws the G, the name, a red progress bar and a tip in their place (through Minecraft's renderer, with smooth text).
  */
 @Mixin(LoadingOverlay.class)
 public abstract class LoadingOverlayMixin {
@@ -26,12 +26,12 @@ public abstract class LoadingOverlayMixin {
             target = "Lnet/minecraft/client/gui/GuiGraphics;blit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIFFIIIIIII)V"))
     private void golemsclient$logo(GuiGraphics g, RenderPipeline pipeline, Identifier texture, int x, int y, float u, float v,
                                    int width, int height, int regionW, int regionH, int textureW, int textureH, int color) {
-        LoadingScreen.logoHalf(x, y, width, height, ((color >>> 24) & 0xFF) / 255f);
+        LoadingScreen.logoHalf(g, x, y, width, height, ((color >>> 24) & 0xFF) / 255f);
     }
 
     @Inject(method = "drawProgressBar", at = @At("HEAD"), cancellable = true)
     private void golemsclient$progressBar(GuiGraphics g, int x0, int y0, int x1, int y1, float opacity, CallbackInfo ci) {
-        LoadingScreen.progress(x0, y0, x1, y1, currentProgress, opacity);
+        LoadingScreen.progress(g, x0, y0, x1, y1, currentProgress, opacity);
         ci.cancel();
     }
 }
