@@ -41,6 +41,13 @@ public final class MenuData {
     /** The G badge on Golem's Client players' nametags and in the tab list. */
     public boolean showBadges = true;
 
+    // the pause menu (OneClient's): "flat" (blurred game, your player model) or "stepback" (the camera films your player)
+    public String pauseStyle = "flat";
+    /** Step back pans the camera even with reduced motion (OneClient's "Always pan camera"). */
+    public boolean pauseAlwaysPan = false;
+    /** Flat shows your player model. */
+    public boolean pausePlayer = true;
+
     // the lobby (the world behind the menu)
     public boolean lobbyEnabled = true;
     /** "auto" (the season's scene) or a scene id. */

@@ -2,6 +2,8 @@
 // Changed for Golem's Client: only the emote playback the lobby uses (the run-in, being dragged), no cosmetics.
 package dev.golemsclient.oc.mixin.client.cosmetics;
 
+import dev.golemsclient.oc.client.gui.pausescreen.PauseAvatar;
+
 import dev.golemsclient.oc.client.cosmetics.access.AvatarEmoteRenderAccess;
 import dev.golemsclient.oc.client.emotes.playback.EmoteController;
 import dev.golemsclient.oc.client.lobby.LobbyHerobrine;
@@ -22,6 +24,7 @@ public class MixinPlayerModel {
 
     @Inject(method = "setupAnim(Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;)V", at = @At("RETURN"))
     private void golems$applyEmote(AvatarRenderState state, CallbackInfo ci) {
+        PauseAvatar.breathe((PlayerModel) (Object) this, state);
         if (!(state instanceof AvatarEmoteRenderAccess renderAccess)) return;
         EmoteController controller = renderAccess.golems$boundEmoteController();
         if (!controller.isActive()) return;

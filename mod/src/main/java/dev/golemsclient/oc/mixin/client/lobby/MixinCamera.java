@@ -2,6 +2,8 @@
 // Changed for Golem's Client.
 package dev.golemsclient.oc.mixin.client.lobby;
 
+import dev.golemsclient.oc.client.gui.pausescreen.PauseStage;
+
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.minecraft.client.renderer.GameRenderer;
@@ -18,13 +20,13 @@ public class MixinCamera {
     @ModifyReturnValue(method = "getFov", at = @At("RETURN"))
     
     private float golems$lobbyFov(float original) {
-        return LobbyScene.cameraFov(original);
+        return PauseStage.fov(LobbyScene.cameraFov(original));
     }
 
     @Inject(method = "getFov", at = @At("HEAD"), cancellable = true)
     
     private void golems$holdLobbyFov(CallbackInfoReturnable<Float> cir) {
-        if (LobbyScene.terrainActive()) cir.setReturnValue(LobbyScene.cameraFov(0f));
+        if (LobbyScene.terrainActive()) cir.setReturnValue(PauseStage.fov(LobbyScene.cameraFov(0f)));
     }
 
     @ModifyExpressionValue(method = "getProjectionMatrixForCulling", at = @At(value = "INVOKE", target = "Ljava/lang/Math;max(FF)F"))

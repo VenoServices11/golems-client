@@ -2,6 +2,8 @@
 // Changed for Golem's Client.
 package dev.golemsclient.oc.mixin.client.lobby;
 
+import dev.golemsclient.oc.client.gui.pausescreen.PauseAvatar;
+
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -27,6 +29,6 @@ public class MixinEntityRenderer {
 
     @ModifyReturnValue(method = "getPackedLightCoords", at = @At("RETURN"))
     private int golems$keyLightLobbyCast(int original, Entity entity, float partialTickTime) {
-        return LobbyScene.lightFor(entity, original);
+        return PauseAvatar.light(entity, LobbyScene.lightFor(entity, original));
     }
 }

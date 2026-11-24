@@ -22,6 +22,8 @@ public abstract class TitleScreenSwapMixin {
         if (screen instanceof TitleScreen || (screen == null && mc.level == null)) return new MainMenu();
         // the pause menu (not F3+Esc's pause without a menu, and not other mods' screens built on it)
         if (screen != null && screen.getClass() == PauseScreen.class && ((PauseScreen) screen).showsPauseMenu()) {
+            // the pause menu's "Classic pause menu": Minecraft's own, this once
+            if (PauseMenu.takeVanilla()) return screen;
             return new PauseMenu();
         }
         return screen;

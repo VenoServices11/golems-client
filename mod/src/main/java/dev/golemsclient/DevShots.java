@@ -57,6 +57,14 @@ public final class DevShots {
         step("05_in_world", DevShots::createWorld, 3000,
                 () -> mc.player != null && mc.level != null && mc.getOverlay() == null && mc.screen == null);
         step("06_pause_menu", () -> mc.pauseGame(false), 1500, null);
+        // the pause menu's Step back style: the camera glides round to your player
+        step("06b_pause_stepback", () -> {
+            dev.golemsclient.menu.MenuData d = dev.golemsclient.menu.MenuData.get();
+            d.pauseStyle = "stepback";
+            mc.setScreen(null);
+            mc.pauseGame(false);
+            d.pauseStyle = "flat";
+        }, 2500, null);
         step("07_lobby_again", () -> mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), 3500,
                 () -> mc.screen instanceof MainMenu && LobbyBridge.showing() && LobbyBridge.panelAlpha() >= 0.99f);
         step("08_news", () -> {

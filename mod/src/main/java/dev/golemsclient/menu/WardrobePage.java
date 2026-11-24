@@ -27,28 +27,28 @@ final class WardrobePage {
     private static final String[][] MAIN = {{"Head", ""}, {"Capes", "cape"}, {"Wings", ""}, {"Aura", ""}, {"Pet", ""}, {"Emote", ""}};
     private static final String[] ACCESSORIES = {"Face", "Back", "Shoulders", "Gloves", "Feet"};
 
-    private final MainMenu m;
+    private final MenuScreen m;
     private View view = View.HOME;
     private float scroll;
     private float listY0, listY1, listContent;
     private boolean addSlim;
     private boolean picking;
 
-    WardrobePage(MainMenu menu) {
+    WardrobePage(MenuScreen menu) {
         this.m = menu;
     }
 
     void open() {
         view = View.HOME;
         scroll = 0f;
-        LobbyBridge.wardrobe(true);
+        if (m instanceof MainMenu) LobbyBridge.wardrobe(true);
         if (SkinService.profile() == null) SkinService.refresh();
         SkinService.Profile p = SkinService.profile();
         addSlim = p != null && p.skin() != null && p.skin().slim();
     }
 
     void close() {
-        LobbyBridge.wardrobe(false);
+        if (m instanceof MainMenu) LobbyBridge.wardrobe(false);
     }
 
     /** Esc: back a step. True when it was used. */
