@@ -57,6 +57,33 @@ public final class DevShots {
         step("07_lobby_again", () -> mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), 3500,
                 () -> mc.screen instanceof MainMenu && dev.golemsclient.lobby.Lobby.active());
         ClientTickEvents.END_CLIENT_TICK.register(DevShots::tick);
+        // if a step hangs, write every thread's stack to the log (once)
+        Thread watchdog = new Thread(() -> {
+            int last = -2;
+            long lastChange = System.currentTimeMillis();
+            boolean dumped = false;
+            while (true) {
+                try {
+                    Thread.sleep(5000L);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                if (index != last) {
+                    last = index;
+                    lastChange = System.currentTimeMillis();
+                } else if (!dumped && index >= 0 && System.currentTimeMillis() - lastChange > 120_000L) {
+                    dumped = true;
+                    StringBuilder sb = new StringBuilder("[DevShots] stuck at step " + index + ", threads:\n");
+                    Thread.getAllStackTraces().forEach((t, st) -> {
+                        sb.append("--- ").append(t.getName()).append(" (").append(t.getState()).append(")\n");
+                        for (int i = 0; i < Math.min(st.length, 40); i++) sb.append("    at ").append(st[i]).append('\n');
+                    });
+                    GolemsClient.LOGGER.error(sb.toString());
+                }
+            }
+        }, "DevShots watchdog");
+        watchdog.setDaemon(true);
+        watchdog.start();
     }
 
     private static void step(String name, Runnable action, long waitMs, BooleanSupplier ready) {

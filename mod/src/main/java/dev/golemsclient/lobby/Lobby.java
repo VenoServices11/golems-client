@@ -50,6 +50,7 @@ public final class Lobby {
 
     private static final String LEVEL_ID = "lobby";
     private static final long REVEAL_MS = 2600L;
+    private static final double CLOSER = 0.7;
 
     private static Phase phase = Phase.OFF;
     private static Scene scene;
@@ -377,6 +378,11 @@ public final class Lobby {
         if (previewCamera != null) return previewCamera;
         double cx = x0 + scene.camX, cy = scene.bottom + scene.camY, cz = z0 + scene.camZ;
         float yaw = scene.camYaw, pitch = scene.camPitch;
+        // a bit closer than the scene's camera, so you're bigger in the picture (still on the same clear line)
+        Vec3 aim = target().add(0, 1.0, 0);
+        cx = aim.x + (cx - aim.x) * CLOSER;
+        cy = aim.y + (cy - aim.y) * CLOSER;
+        cz = aim.z + (cz - aim.z) * CLOSER;
         double t = (System.currentTimeMillis() % 1_000_000L) / 1000.0;
         // a slow drift, so the picture is alive
         cx += Math.sin(t * 0.21) * 0.18;

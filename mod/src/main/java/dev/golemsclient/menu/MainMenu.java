@@ -163,7 +163,7 @@ public final class MainMenu extends MenuScreen {
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         if (dev.golemsclient.lobby.Lobby.active()) {
             // the lobby world is behind: only a soft shade at the top and bottom
-            g.fillGradient(0, 0, width, height / 5, 0x66000000, 0x00000000);
+            g.fillGradient(0, 0, width, height / 4, 0x99000000, 0x00000000);
             g.fillGradient(0, height * 3 / 5, width, height, 0x00000000, 0x80000000);
             return;
         }
@@ -282,6 +282,11 @@ public final class MainMenu extends MenuScreen {
     private void drawSplash(GuiGraphics g) {
         if (minecraft.options.hideSplashTexts().get()) return;
         float[] b = playerBox();
+        if (dev.golemsclient.lobby.Lobby.active()) {
+            float cx = (b[0] + b[2]) / 2f;
+            splash.draw(g, (cx + 70f) * u, (b[1] + 4f) * u, u, fade);
+            return;
+        }
         splash.draw(g, (b[2] + (b[2] - b[0]) * 0.62f) * u, (b[1] + (b[3] - b[1]) * 0.02f) * u, u, fade);
     }
 

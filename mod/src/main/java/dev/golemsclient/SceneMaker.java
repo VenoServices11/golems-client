@@ -218,7 +218,7 @@ public final class SceneMaker {
         }
         if (bestCam == null) throw new IllegalStateException("no clear camera near " + target);
 
-        int radius = spec.cave() ? 40 : 80, below = spec.cave() ? 14 : 22, above = spec.cave() ? 18 : 44;
+        int radius = spec.cave() ? 40 : 80, below = spec.cave() ? 14 : 40, above = spec.cave() ? 18 : 50;
         Scene s = Scene.capture(level, target, radius, below, above);
         s.id = spec.id();
         s.name = spec.name();
