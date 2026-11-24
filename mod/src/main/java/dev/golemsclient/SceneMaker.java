@@ -185,33 +185,30 @@ public final class SceneMaker {
         Level level = mc.level;
         BlockPos target = spec.cave() ? caveSpot(level, found) : groundSpot(level, found);
         if (target == null) throw new IllegalStateException("no spot to stand on near " + found);
-        float d = spec.cave() ? 7f : 12f, h = spec.cave() ? 2.2f : 6f;
-        float bestYaw = 0f;
+        float bestYaw = 0f, bestPitch = 0f;
         Vec3 bestCam = null;
-        int bestScore = Integer.MIN_VALUE;
+        double bestScore = -1e9;
         Vec3 aim = new Vec3(target.getX() + 0.5, target.getY() + 1.0, target.getZ() + 0.5);
-        for (int i = 0; i < 16; i++) {
-            float yaw = i * 22.5f;
+        float[] ds = spec.cave() ? new float[] {6f, 7.5f, 9f} : new float[] {10f, 12f, 14f};
+        float[] hs = spec.cave() ? new float[] {1.5f, 2.5f} : new float[] {4.5f, 6.5f};
+        for (int i = 0; i < 24; i++) {
+            float yaw = i * 15f;
             double fx = -Math.sin(Math.toRadians(yaw)), fz = Math.cos(Math.toRadians(yaw));
-            Vec3 cam = aim.add(-fx * d, h, -fz * d);
-            if (solid(level, BlockPos.containing(cam)) || solid(level, BlockPos.containing(cam).above())
-                    || solid(level, BlockPos.containing(cam).below())) continue;
-            int score = 0;
-            if (clear(level, cam, aim)) score += 20;
-            else continue;
-            for (int a = -4; a <= 4; a += 2) {
-                for (int b = -4; b <= 4; b += 2) {
-                    if (clear(level, cam, aim.add(a, 0.2, b))) score += 2;
+            for (float d : ds) {
+                for (float h : hs) {
+                    Vec3 cam = aim.add(-fx * d, h, -fz * d);
+                    if (solid(level, BlockPos.containing(cam)) || solid(level, BlockPos.containing(cam).above())
+                            || solid(level, BlockPos.containing(cam).below())) continue;
+                    if (!clear(level, cam, aim) || !clear(level, cam, aim.add(0, 0.9, 0))) continue;
+                    float pitch = (float) Math.toDegrees(Math.atan2(h, d));
+                    double score = view(level, cam, yaw, pitch) - Math.abs(d - ds[1]) * 2;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestYaw = yaw;
+                        bestPitch = pitch;
+                        bestCam = cam;
+                    }
                 }
-            }
-            // a little room around the camera
-            for (int a = -2; a <= 2; a++) for (int b = -2; b <= 2; b++) for (int c = -1; c <= 1; c++) {
-                if (solid(level, BlockPos.containing(cam.add(a, c, b)))) score--;
-            }
-            if (score > bestScore) {
-                bestScore = score;
-                bestYaw = yaw;
-                bestCam = cam;
             }
         }
         if (bestCam == null) throw new IllegalStateException("no clear camera near " + target);
@@ -227,7 +224,7 @@ public final class SceneMaker {
         s.camY = bestCam.y - s.bottom;
         s.camZ = bestCam.z - bz;
         s.camYaw = bestYaw;
-        s.camPitch = (float) Math.toDegrees(Math.atan2(bestCam.y - aim.y, d));
+        s.camPitch = bestPitch;
         s.targetX = target.getX() + 0.5 - bx;
         s.targetY = target.getY() - s.bottom;
         s.targetZ = target.getZ() + 0.5 - bz;
@@ -243,6 +240,37 @@ public final class SceneMaker {
         Lobby.previewCamera = new double[] {bestCam.x, bestCam.y, bestCam.z, bestYaw, s.camPitch};
         // a marker where you will stand, for the preview picture
         cmd(Minecraft.getInstance(), "tp @a " + bestCam.x + " " + (bestCam.y - 1.62) + " " + bestCam.z);
+    }
+
+    /**
+     * How open the picture from this camera is: rays across the frame, each scoring how far it gets before hitting
+     * something (a wall or tree right in front of the camera scores badly).
+     */
+    private static double view(Level level, Vec3 cam, float yaw, float pitch) {
+        double y = Math.toRadians(yaw), p = Math.toRadians(pitch);
+        Vec3 f = new Vec3(-Math.sin(y) * Math.cos(p), -Math.sin(p), Math.cos(y) * Math.cos(p));
+        Vec3 r = new Vec3(-Math.cos(y), 0, -Math.sin(y));
+        Vec3 u = r.cross(f);
+        double tan = Math.tan(Math.toRadians(35)), aspect = 16.0 / 9.0;
+        double score = 0;
+        for (int gx = -3; gx <= 3; gx++) {
+            for (int gy = -2; gy <= 2; gy++) {
+                Vec3 dir = f.add(r.scale(gx / 3.0 * tan * aspect * 0.9)).add(u.scale(gy / 2.0 * tan * 0.9)).normalize();
+                double dist = march(level, cam, dir, 40);
+                double w = (Math.abs(gx) <= 1 && Math.abs(gy) <= 1) ? 2.5 : 1.0;
+                score += w * Math.min(dist, 30);
+                if (dist < 5) score -= w * 25;
+            }
+        }
+        return score;
+    }
+
+    private static double march(Level level, Vec3 from, Vec3 dir, double max) {
+        for (double t = 0.5; t < max; t += 0.35) {
+            BlockState s = level.getBlockState(BlockPos.containing(from.add(dir.scale(t))));
+            if (s.canOcclude() || s.getBlock() instanceof LeavesBlock || !s.getFluidState().isEmpty() && t < 3) return t;
+        }
+        return max;
     }
 
     private static boolean solid(Level level, BlockPos p) {
@@ -270,21 +298,21 @@ public final class SceneMaker {
     private static BlockPos groundSpot(Level level, BlockPos near) {
         BlockPos best = null;
         double bestScore = -1e9;
-        for (int dx = -20; dx <= 20; dx++) {
-            for (int dz = -20; dz <= 20; dz++) {
+        for (int dx = -28; dx <= 28; dx++) {
+            for (int dz = -28; dz <= 28; dz++) {
                 int x = near.getX() + dx, z = near.getZ() + dz;
                 int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
                 BlockPos p = new BlockPos(x, y, z);
                 if (!standable(level, p)) continue;
                 int flat = 0;
-                for (int a = -2; a <= 2; a++) {
-                    for (int b = -2; b <= 2; b++) {
+                for (int a = -4; a <= 4; a++) {
+                    for (int b = -4; b <= 4; b++) {
                         int hy = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x + a, z + b);
                         if (Math.abs(hy - y) <= 1) flat++;
                     }
                 }
                 boolean path = level.getBlockState(p.below()).is(Blocks.DIRT_PATH);
-                double score = flat * 3 + (path ? 6 : 0) - Math.sqrt(dx * dx + dz * dz) * 0.4;
+                double score = flat * 2 + (path ? 8 : 0) - Math.sqrt(dx * dx + dz * dz) * 0.5;
                 if (score > bestScore) {
                     bestScore = score;
                     best = p;
@@ -297,9 +325,9 @@ public final class SceneMaker {
     private static BlockPos caveSpot(Level level, BlockPos near) {
         BlockPos best = null;
         double bestScore = -1e9;
-        for (int dx = -16; dx <= 16; dx++) {
-            for (int dy = -12; dy <= 12; dy++) {
-                for (int dz = -16; dz <= 16; dz++) {
+        for (int dx = -32; dx <= 32; dx++) {
+            for (int dy = -20; dy <= 20; dy++) {
+                for (int dz = -32; dz <= 32; dz++) {
                     BlockPos p = near.offset(dx, dy, dz);
                     if (!standable(level, p) || solid(level, p.above(2))) continue;
                     int open = 0;

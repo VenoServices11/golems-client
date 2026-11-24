@@ -43,19 +43,19 @@ public final class DevShots {
         MenuData.played("Hypixel", "mc.hypixel.net");
         MenuData.played("DonutSMP", "donutsmp.net");
         dev.golemsclient.menu.Announcement.devFake("Live tonight at 8 PM on TikTok!");
-        step("01_main_menu", () -> { }, 5000, null);
-        step("02_social", () -> MainMenu.devSocial(true), 1200, null);
-        step("03_tab_toast", () -> {
+        step("00_startup", () -> { }, 300, () -> dev.golemsclient.lobby.Lobby.phase() == dev.golemsclient.lobby.Lobby.Phase.LOADING);
+        step("01_reveal", () -> { }, 1300, () -> dev.golemsclient.lobby.Lobby.phase() == dev.golemsclient.lobby.Lobby.Phase.REVEAL);
+        step("02_lobby_menu", () -> { }, 3500, () -> mc.screen instanceof MainMenu);
+        step("03_social", () -> MainMenu.devSocial(true), 1200, null);
+        step("04_tab_toast", () -> {
             MainMenu.devSocial(false);
             MainMenu.devTab(1);
         }, 900, null);
-        step("04_in_world", DevShots::createWorld, 3000,
-                () -> mc.player != null && mc.level != null && mc.getOverlay() == null && mc.screen == null);
-        step("04b_pause_menu", () -> mc.pauseGame(false), 1500, null);
-        step("05_main_menu_singleplayer", () -> {
-            mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
-            MainMenu.devSingleplayer(true);
-        }, 4000, () -> mc.level == null && mc.screen instanceof MainMenu);
+        step("05_in_world", DevShots::createWorld, 3000,
+                () -> mc.player != null && mc.level != null && mc.getOverlay() == null && mc.screen == null && !dev.golemsclient.lobby.Lobby.active());
+        step("06_pause_menu", () -> mc.pauseGame(false), 1500, null);
+        step("07_lobby_again", () -> mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), 3500,
+                () -> mc.screen instanceof MainMenu && dev.golemsclient.lobby.Lobby.active());
         ClientTickEvents.END_CLIENT_TICK.register(DevShots::tick);
     }
 
@@ -81,12 +81,7 @@ public final class DevShots {
     private static void tick(Minecraft mc) {
         long now = System.currentTimeMillis();
         if (index < 0) {
-            if (!(mc.screen instanceof MainMenu) || mc.getOverlay() != null) {
-                menuSince = 0;
-                return;
-            }
-            if (menuSince == 0) menuSince = now;
-            if (now - menuSince < 3000) return;
+            if (mc.getOverlay() != null) return;
             index = 0;
             stepAt = now;
             run(0);
