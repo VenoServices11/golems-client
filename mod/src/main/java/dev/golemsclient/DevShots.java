@@ -59,6 +59,7 @@ public final class DevShots {
         step("06_pause_menu", () -> mc.pauseGame(false), 1500, null);
         step("07_lobby_again", () -> mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), 3500,
                 () -> mc.screen instanceof MainMenu && LobbyBridge.showing() && LobbyBridge.panelAlpha() >= 0.99f);
+        step("08_stats", () -> MainMenu.devTab(2), 1500, null);
         ClientTickEvents.END_CLIENT_TICK.register(DevShots::tick);
         // if a step hangs, write every thread's stack to the log (once)
         Thread watchdog = new Thread(() -> {

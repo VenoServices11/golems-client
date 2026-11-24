@@ -81,6 +81,7 @@ public final class MainMenu extends MenuScreen {
     // which tab is showing: 0 Play, 1 Wardrobe
     private int page;
     private final WardrobePage wardrobe = new WardrobePage(this);
+    private final StatsPage stats = new StatsPage(this, ip -> ping == null ? null : ping.icon(ip));
     // pressing on your player in the scene: a short hold or a drag picks it up, a click makes it react
     private boolean pressingPlayer, grabbing;
     private long pressedAt;
@@ -165,6 +166,7 @@ public final class MainMenu extends MenuScreen {
         page = next;
         lobbyPanel = false;
         if (page == 1) wardrobe.open();
+        if (page == 2) stats.open();
     }
 
     @Override
@@ -238,6 +240,11 @@ public final class MainMenu extends MenuScreen {
             // the Wardrobe: the camera is close on your player, so no name tag or splash over it
             drawTopBar();
             wardrobe.draw();
+        } else if (page == 2) {
+            // Stats, with the Play card kept at the bottom right
+            drawTopBar();
+            stats.draw(w - PAD - SIDE_W - 8f, H - 26f - 132f);
+            drawPlayCard();
         } else {
             drawPlayer(g);
             drawSplash(g);
@@ -430,6 +437,7 @@ public final class MainMenu extends MenuScreen {
         switch (index) {
             case 0 -> setPage(0);
             case 1 -> setPage(1);
+            case 2 -> setPage(2);
             case 4 -> {
                 openFolder(minecraft.gameDirectory.toPath().resolve("screenshots"));
                 showToast("Opened your screenshots folder. The Screenshots tab is coming soon.");
@@ -1037,6 +1045,10 @@ public final class MainMenu extends MenuScreen {
         if (page == 1 && key == GLFW.GLFW_KEY_ESCAPE) {
             // Esc steps back inside the Wardrobe, then back to Play
             if (!wardrobe.back()) setPage(0);
+            return true;
+        }
+        if (page != 0 && key == GLFW.GLFW_KEY_ESCAPE) {
+            setPage(0);
             return true;
         }
         if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {

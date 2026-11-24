@@ -29,6 +29,8 @@ public final class GolemsClient implements ClientModInitializer {
 
         // OneClient's lobby: its startup chime is loaded early so it can play the moment the game is ready
         dev.golemsclient.oc.client.lobby.StartupSounds.INSTANCE.prepare();
+        // play time per world and server, for the Stats page
+        dev.golemsclient.stats.PlaySessions.register();
         DevShots.register();
         LOGGER.info("Golem's Client {} (mod {})", version(), modVersion());
     }
