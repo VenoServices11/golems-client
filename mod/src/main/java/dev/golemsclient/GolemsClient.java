@@ -31,6 +31,8 @@ public final class GolemsClient implements ClientModInitializer {
         dev.golemsclient.oc.client.lobby.StartupSounds.INSTANCE.prepare();
         // play time per world and server, for the Stats page
         dev.golemsclient.stats.PlaySessions.register();
+        // the G badge on Golem's Client players' nametags and in the tab list
+        dev.golemsclient.badge.Badges.register();
         DevShots.register();
         LOGGER.info("Golem's Client {} (mod {})", version(), modVersion());
     }

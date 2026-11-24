@@ -42,6 +42,10 @@
  *   POST /launcher/news/post { key, title, body, link } -> { ok, id }   the owner writes a News post
  *   POST /launcher/news/delete { key, id }        -> { ok }       the owner takes a post down
  *
+ * The in-game mod's G badge (on the nametags and tab list of Golem's Client players):
+ *   POST /client/ping   { uuid }                  -> { ok }   every two minutes while the game is open
+ *   POST /client/lookup { uuids: [..] (max 300) } -> { users, owners }   who of them is playing with Golem's Client
+ *
  * The owner key is a secret:  npx wrangler secret put ADMIN_KEY
  */
 
@@ -55,6 +59,7 @@ const BROADCAST_FOR = 24 * 60 * 60; // a broadcast is shown to clients that chec
 // emeraldgolem3, the owner: always an owner, with or without having entered the key
 const OWNER_UUIDS = new Set(["dabe852b94dd4bb9b18d151c206be824"]);
 const LAUNCHER_ONLINE_FOR = 3 * 60; // the launcher checks in every minute
+const CLIENT_ONLINE_FOR = 5 * 60;   // the mod pings every two minutes
 
 export default {
   async fetch(request, env) {
@@ -126,6 +131,8 @@ export default {
         case "/admin/cape/give": return await adminCapeGive(env, body, now);
         case "/admin/cape/list": return await adminCapeList(env, body);
         case "/launcher/checkin": return await launcherCheckin(env, body, now);
+        case "/client/ping": return await clientPing(env, body, now);
+        case "/client/lookup": return await clientLookup(env, body, now);
         case "/launcher/leave": return await launcherLeave(env, body);
         case "/launcher/stats": return await launcherStats(env, body, now);
         case "/launcher/announce": return await launcherAnnounce(env, body, now);
@@ -144,6 +151,7 @@ export default {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM online WHERE seen < ?").bind(now - ONLINE_FOR),
       env.DB.prepare("DELETE FROM launcher_online WHERE seen < ?").bind(now - LAUNCHER_ONLINE_FOR),
+      env.DB.prepare("DELETE FROM client_online WHERE seen < ?").bind(now - CLIENT_ONLINE_FOR),
       env.DB.prepare("DELETE FROM sessions WHERE expires < ?").bind(now),
       env.DB.prepare("DELETE FROM challenges WHERE expires < ?").bind(now),
     ]);
@@ -187,6 +195,8 @@ async function ensureUsers(env) {
     env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_users (uuid TEXT PRIMARY KEY, name TEXT, version TEXT, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_online (uuid TEXT PRIMARY KEY, seen INTEGER NOT NULL, state TEXT NOT NULL, instance TEXT, mc TEXT)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_announcements (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, at INTEGER NOT NULL)"),
+    // players in game with Golem's Client right now (the mod pings), for the G badge
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS client_online (uuid TEXT PRIMARY KEY, seen INTEGER NOT NULL)"),
     // the in-game News page: the owner's posts
     env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_news (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, body TEXT NOT NULL, link TEXT, at INTEGER NOT NULL)"),
   ]);
@@ -585,6 +595,46 @@ async function launcherCheckin(env, body, now) {
       .bind(uuid, now, state, instance, mc),
   ]);
   return json({ ok: true });
+}
+
+// ------------------------------------------------------------------ the G badge
+
+/** The mod says it's running for this player. */
+async function clientPing(env, body, now) {
+  await ensureUsers(env);
+  const uuid = String(body.uuid || "").toLowerCase().replace(/-/g, "");
+  if (!UUID.test(uuid)) return json({ error: "bad request" }, 400);
+  await env.DB.prepare("INSERT INTO client_online (uuid, seen) VALUES (?, ?) ON CONFLICT(uuid) DO UPDATE SET seen = excluded.seen")
+    .bind(uuid, now).run();
+  return json({ ok: true });
+}
+
+/** Which of these players are playing with Golem's Client (the mod pinged, or the launcher says it's playing), and which are owners. */
+async function clientLookup(env, body, now) {
+  const uuids = Array.isArray(body.uuids) ? body.uuids : [];
+  const clean = [...new Set(uuids.map((u) => String(u).toLowerCase().replace(/-/g, "")).filter((u) => UUID.test(u)))]
+    .slice(0, MAX_LOOKUP);
+  await ensureUsers(env);
+  const users = new Set();
+  const owners = [];
+  for (let i = 0; i < clean.length; i += 45) {
+    const chunk = clean.slice(i, i + 45);
+    const marks = chunk.map(() => "?").join(",");
+    const rows = await env.DB.prepare(
+      `SELECT uuid FROM client_online WHERE seen >= ? AND uuid IN (${marks}) `
+      + `UNION SELECT uuid FROM launcher_online WHERE state = 'playing' AND seen >= ? AND uuid IN (${marks})`)
+      .bind(now - CLIENT_ONLINE_FOR, ...chunk, now - LAUNCHER_ONLINE_FOR, ...chunk).all();
+    for (const r of rows.results || []) users.add(r.uuid);
+  }
+  const found = [...users];
+  for (let i = 0; i < found.length; i += 90) {
+    const chunk = found.slice(i, i + 90);
+    const marks = chunk.map(() => "?").join(",");
+    const o = await env.DB.prepare(`SELECT uuid FROM owners WHERE uuid IN (${marks})`).bind(...chunk).all();
+    for (const r of o.results || []) owners.push(r.uuid);
+  }
+  for (const u of found) if (OWNER_UUIDS.has(u) && !owners.includes(u)) owners.push(u);
+  return json({ users: found, owners });
 }
 
 async function launcherLeave(env, body) {

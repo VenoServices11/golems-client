@@ -38,6 +38,8 @@ public final class MenuData {
     public String lastNewsSeen = "";
     /** The music volume before the menu's mute button was pressed (-1 when not muted by it). */
     public double mutedMusicVolume = -1;
+    /** The G badge on Golem's Client players' nametags and in the tab list. */
+    public boolean showBadges = true;
 
     // the lobby (the world behind the menu)
     public boolean lobbyEnabled = true;

@@ -1,0 +1,7 @@
+{
+  "providers": [
+    { "type": "bitmap", "file": "golemsclient:badge_font.png", "ascent": 7, "height": 8, "chars": ["\uE000"] },
+    { "type": "bitmap", "file": "golemsclient:badge_font_owner.png", "ascent": 7, "height": 8, "chars": ["\uE002"] },
+    { "type": "space", "advances": { "\uE001": 2 } }
+  ]
+}

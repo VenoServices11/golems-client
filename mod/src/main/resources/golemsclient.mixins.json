@@ -9,7 +9,9 @@
     "LobbySoundsMixin",
     "MenuFramerateMixin",
     "MinecraftTitleMixin",
+    "NametagBadgeMixin",
     "SplashRendererAccessor",
+    "TabListBadgeMixin",
     "TitleScreenSwapMixin",
     "WindowMixin"
   ],
