@@ -82,7 +82,7 @@ final class WardrobePage {
         for (String[] slot : MAIN) {
             if (slot[1].equals("cape")) {
                 SkinService.Cape cape = activeCape(p);
-                y = slotRow(x, y, x1 - x0 - 24f, "Capes", cape == null ? (p == null ? "..." : "None") : cape.alias(), cape, true,
+                y = slotRow(x, y, x1 - x0 - 24f, "Capes", cape == null ? (p != null ? "None" : SkinService.problem() != null ? "Unavailable" : "Loading...") : cape.alias(), cape, true,
                         () -> show(View.CAPES));
             } else {
                 y = slotRow(x, y, x1 - x0 - 24f, slot[0], "Coming soon", null, false, null);
