@@ -150,6 +150,11 @@ async fn readopt(
         state.services.db.clone(),
         session.started_at.clone(),
         open_server,
+    )
+    .with_presence(
+        state.discord.clone(),
+        cluster.name.clone(),
+        cluster.mc_version.clone(),
     );
 
     state.games.set_stage(cluster_id, LaunchStage::Running);
@@ -177,6 +182,7 @@ async fn readopt(
     state.discord.set_presence(Presence::Playing {
         cluster: cluster.name.clone(),
         mc_version: cluster.mc_version.clone(),
+        place: None,
     });
 
     let Ok(log_path) = golems_cluster::logs::cluster_output_log(&cluster) else {

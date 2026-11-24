@@ -19,14 +19,63 @@ pub enum Presence {
     Playing {
         cluster: String,
         mc_version: String,
+        /// Where the player is, as the in-game mod reports it (None until it says)
+        place: Option<Place>,
     },
 }
 
+/// Where the player is in game, as the Golem's Client mod reports it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Place {
+    Lobby,
+    Singleplayer,
+    /// On a server whose address can't be shown
+    Multiplayer,
+    Server(String),
+}
+
+impl Place {
+    /// Reads what the mod logs: "lobby", "singleplayer" or "server <address>".
+    pub fn parse(text: &str) -> Option<Self> {
+        let text = text.trim();
+        match text {
+            "lobby" => Some(Self::Lobby),
+            "singleplayer" => Some(Self::Singleplayer),
+            "multiplayer" => Some(Self::Multiplayer),
+            _ => {
+                let address = text.strip_prefix("server ")?.trim();
+                let valid = !address.is_empty()
+                    && address.len() <= 64
+                    && address.chars().all(|c| {
+                        c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | ':' | '[' | ']')
+                    });
+                valid.then(|| Self::Server(address.to_owned()))
+            }
+        }
+    }
+}
+
 impl Presence {
-    fn details(&self) -> &'static str {
+    fn details(&self) -> String {
         match self {
-            Self::Idle => "Idle",
-            Self::Playing { .. } => "Playing Minecraft",
+            Self::Idle => "Idle".to_owned(),
+            Self::Playing { place: None, .. } => "Playing Minecraft".to_owned(),
+            Self::Playing {
+                place: Some(Place::Lobby),
+                ..
+            } => "In the lobby".to_owned(),
+            Self::Playing {
+                place: Some(Place::Singleplayer),
+                ..
+            } => "Singleplayer".to_owned(),
+            Self::Playing {
+                place: Some(Place::Multiplayer),
+                ..
+            } => "Playing multiplayer".to_owned(),
+            Self::Playing {
+                place: Some(Place::Server(address)),
+                ..
+            } => format!("Playing on {address}"),
         }
     }
 
@@ -36,7 +85,29 @@ impl Presence {
             Self::Playing {
                 cluster,
                 mc_version,
+                place: None,
             } => format!("{cluster} ({mc_version})"),
+            Self::Playing { mc_version, .. } => mc_version.clone(),
+        }
+    }
+
+    /// The same game still running (only where you are changed): the elapsed time keeps counting.
+    fn same_game(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Idle, Self::Idle) => true,
+            (
+                Self::Playing {
+                    cluster: a,
+                    mc_version: b,
+                    ..
+                },
+                Self::Playing {
+                    cluster: c,
+                    mc_version: d,
+                    ..
+                },
+            ) => a == c && b == d,
+            _ => false,
         }
     }
 }
@@ -137,8 +208,10 @@ impl Worker {
             return;
         }
 
+        if !self.presence.same_game(&presence) {
+            self.presence_since = chrono::Utc::now().timestamp();
+        }
         self.presence = presence;
-        self.presence_since = chrono::Utc::now().timestamp();
         self.publish();
     }
 
@@ -164,8 +237,10 @@ impl Worker {
         }
 
         let state = self.presence.state();
+        let details = self.presence.details();
+        let download = format!("{}/releases/latest", golems_common::constants::GITHUB_URL);
         let activity = Activity::new()
-            .details(self.presence.details())
+            .details(&details)
             .state(&state)
             .timestamps(Timestamps::new().start(self.presence_since))
             .assets(
@@ -173,10 +248,10 @@ impl Worker {
                     .large_image(LARGE_IMAGE)
                     .large_text("Golem's Client"),
             )
-            .buttons(vec![Button::new(
-                "Discord",
-                golems_common::constants::DISCORD_URL,
-            )]);
+            .buttons(vec![
+                Button::new("Join the Discord", golems_common::constants::DISCORD_URL),
+                Button::new("Get Golem's Client", &download),
+            ]);
 
         if let Err(err) = self.client.set_activity(activity) {
             tracing::warn!("Discord RPC set_activity failed: {err}");

@@ -48,11 +48,28 @@ pub(crate) fn parse_server_join(line: &str) -> Option<ServerJoin> {
     })
 }
 
+/// The Golem's Client mod logs where the player is (lobby, singleplayer or a server) after this marker
+const STATUS_MARKER: &str = "[GolemsStatus] ";
+
+pub(crate) fn parse_status(line: &str) -> Option<golems_discord::Place> {
+    let at = line.find(STATUS_MARKER)?;
+    golems_discord::Place::parse(&line[at + STATUS_MARKER.len()..])
+}
+
+/// Feeds where the player is into the Discord status
+#[derive(Clone)]
+struct PresenceFeed {
+    discord: golems_discord::DiscordRpc,
+    cluster: String,
+    mc_version: String,
+}
+
 #[derive(Clone)]
 pub(crate) struct SessionRecorder {
     session_started_at: String,
     db: DbPool,
     open_server: Arc<Mutex<Option<String>>>,
+    presence: Option<PresenceFeed>,
 }
 
 impl SessionRecorder {
@@ -92,6 +109,7 @@ impl SessionRecorder {
             session_started_at: session.started_at,
             db: state.services.db.clone(),
             open_server: Arc::new(Mutex::new(None)),
+            presence: None,
         })
     }
 
@@ -106,7 +124,23 @@ impl SessionRecorder {
             session_started_at,
             db,
             open_server: Arc::new(Mutex::new(open_server)),
+            presence: None,
         }
+    }
+
+    /// Where the player is (from the game's log) also goes to the Discord status
+    pub(crate) fn with_presence(
+        mut self,
+        discord: golems_discord::DiscordRpc,
+        cluster: String,
+        mc_version: String,
+    ) -> Self {
+        self.presence = Some(PresenceFeed {
+            discord,
+            cluster,
+            mc_version,
+        });
+        self
     }
 
     /// Playtime is measured against this so it agrees with the session span
@@ -134,6 +168,17 @@ impl SessionRecorder {
     }
 
     pub(crate) async fn observe(&self, line: &str) {
+        if let Some(feed) = &self.presence
+            && let Some(place) = parse_status(line)
+        {
+            feed.discord
+                .set_presence(golems_discord::Presence::Playing {
+                    cluster: feed.cluster.clone(),
+                    mc_version: feed.mc_version.clone(),
+                    place: Some(place),
+                });
+            return;
+        }
         if let Some(join) = parse_server_join(line) {
             self.open(join).await;
         } else if super::log_replay::is_leave_marker(line) {
@@ -202,6 +247,22 @@ async fn count_enabled_mods(state: &Arc<LauncherState>, cluster_id: i64) -> usiz
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_status_lines() {
+        use golems_discord::Place;
+        assert_eq!(
+            parse_status("[12:00:00] [Render thread/INFO]: [GolemsStatus] server donutsmp.net"),
+            Some(Place::Server("donutsmp.net".into()))
+        );
+        assert_eq!(parse_status("[GolemsStatus] lobby"), Some(Place::Lobby));
+        assert_eq!(
+            parse_status("[GolemsStatus] singleplayer\r"),
+            Some(Place::Singleplayer)
+        );
+        assert_eq!(parse_status("[GolemsStatus] server evil name"), None);
+        assert_eq!(parse_status("Connecting to mc.hypixel.net, 25565"), None);
+    }
 
     #[test]
     fn parses_host_and_port() {

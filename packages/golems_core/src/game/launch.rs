@@ -588,6 +588,7 @@ async fn start(
     state.discord.set_presence(Presence::Playing {
         cluster: cluster.name.clone(),
         mc_version: cluster.mc_version.clone(),
+        place: None,
     });
 
     let recorder = SessionRecorder::start(
@@ -598,7 +599,14 @@ async fn start(
             .unwrap_or_else(golems_common::default_mem_max),
         &java,
     )
-    .await;
+    .await
+    .map(|recorder| {
+        recorder.with_presence(
+            state.discord.clone(),
+            cluster.name.clone(),
+            cluster.mc_version.clone(),
+        )
+    });
 
     // Pinned to the session row so that if the launcher exits first the next
     // start can tell whether the game is still playing

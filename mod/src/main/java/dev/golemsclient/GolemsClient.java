@@ -33,6 +33,8 @@ public final class GolemsClient implements ClientModInitializer {
         dev.golemsclient.stats.PlaySessions.register();
         // the G badge on Golem's Client players' nametags and in the tab list
         dev.golemsclient.badge.Badges.register();
+        // where you are, for the launcher's Discord status
+        DiscordStatus.register();
         DevShots.register();
         LOGGER.info("Golem's Client {} (mod {})", version(), modVersion());
     }

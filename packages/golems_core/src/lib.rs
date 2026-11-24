@@ -95,7 +95,7 @@ pub use golems_content::packages::updates::{
     refresh_browser_package_updates_for, skip_browser_package_update,
 };
 pub use golems_db::models::SeenStatus;
-pub use golems_discord::{DiscordRpc, Presence};
+pub use golems_discord::{DiscordRpc, Place, Presence};
 pub use golems_mc::{McError as MetadataError, MetadataStore};
 pub use settings::ProfileUpdate;
 pub use state::LauncherServices;
