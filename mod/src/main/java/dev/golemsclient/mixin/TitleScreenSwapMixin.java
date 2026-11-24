@@ -30,6 +30,7 @@ public abstract class TitleScreenSwapMixin {
         if (lobbyBusy && (screen instanceof GenericMessageScreen || screen instanceof LevelLoadingScreen || screen instanceof ProgressScreen)) {
             return Lobby.screen();
         }
+        if (Lobby.isLeaving() && (screen instanceof GenericMessageScreen || screen instanceof ProgressScreen)) return Lobby.screen();
         // in the lobby, closing a screen goes back to the menu (or the startup screen while it reveals itself)
         if (screen == null && Lobby.active()) {
             return Lobby.phase() == Lobby.Phase.READY ? new MainMenu() : Lobby.screen();

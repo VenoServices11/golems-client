@@ -64,6 +64,7 @@ public final class Lobby {
     private static LobbyInput input;
     private static boolean arrived;
     private static LobbyScreen screen;
+    private static boolean leaving;
     /** Dev only: a camera pose to look through instead of the scene's (scene previews). */
     public static double[] previewCamera;
 
@@ -84,6 +85,15 @@ public final class Lobby {
     /** On unless turned off in the lobby settings (or it failed this session, or there are no scenes). */
     public static boolean enabled() {
         return !failed && MenuData.get().lobbyEnabled && !Scenes.all().isEmpty() && !Boolean.getBoolean("golemsclient.noLobby");
+    }
+
+    /** Set while the lobby's world is being closed (its "Saving world" screens are swapped for ours). */
+    public static void leaving(boolean on) {
+        leaving = on;
+    }
+
+    public static boolean isLeaving() {
+        return leaving;
     }
 
     public static Phase phase() {
