@@ -49,6 +49,10 @@ public final class DevShots {
         step("01_reveal", () -> { }, 700, () -> LobbyBridge.showing() && LobbyBridge.introPlaying());
         step("02_lobby_menu", () -> { }, 1500, () -> mc.screen instanceof MainMenu && LobbyBridge.showing()
                 && LobbyBridge.panelAlpha() >= 0.99f && !LobbyBridge.startupActive());
+        // the first-launch setup (shown on 02 over the lobby): its other two pages, then finished
+        step("02b_setup_look", () -> MainMenu.devSetup(1), 900, null);
+        step("02c_setup_gameplay", () -> MainMenu.devSetup(2), 900, null);
+        step("02d_after_setup", () -> MainMenu.devSetup(-1), 1500, null);
         step("03_social", () -> MainMenu.devSocial(true), 1200, null);
         step("04_tab_toast", () -> {
             MainMenu.devSocial(false);

@@ -48,6 +48,9 @@ public final class MenuData {
     /** Flat shows your player model. */
     public boolean pausePlayer = true;
 
+    /** The first-launch setup was finished (or skipped). */
+    public boolean setupDone = false;
+
     // the lobby (the world behind the menu)
     public boolean lobbyEnabled = true;
     /** "auto" (the season's scene) or a scene id. */

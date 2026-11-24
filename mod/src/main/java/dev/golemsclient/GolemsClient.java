@@ -29,6 +29,8 @@ public final class GolemsClient implements ClientModInitializer {
 
         // OneClient's lobby: its startup chime is loaded early so it can play the moment the game is ready
         dev.golemsclient.oc.client.lobby.StartupSounds.INSTANCE.prepare();
+        // the first-launch setup: the startup logo flies into its card when it's waiting
+        dev.golemsclient.oc.LobbyBridge.setupPending(!dev.golemsclient.menu.MenuData.get().setupDone);
         // play time per world and server, for the Stats page
         dev.golemsclient.stats.PlaySessions.register();
         // the G badge on Golem's Client players' nametags and in the tab list

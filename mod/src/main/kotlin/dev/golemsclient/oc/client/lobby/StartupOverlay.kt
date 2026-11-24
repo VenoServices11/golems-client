@@ -62,6 +62,11 @@ object StartupOverlay {
     @Volatile
     var cardGrow = 1f
 
+    /** Golem's Client's first-launch setup is waiting: the logo flies into its card instead of the top bar. */
+    @JvmField
+    @Volatile
+    var setupPending = false
+
     @JvmField
     @Volatile
     var active = false
@@ -208,7 +213,7 @@ object StartupOverlay {
     private fun enterHold(holding: Boolean) {
         if (!holding || holdNanos != 0L) return
         holdNanos = System.nanoTime()
-        card = false
+        card = setupPending
         LobbyScene.startupReveal(if (card) CARD_CHROME_DELAY else RISE_CHROME_DELAY)
         StartupSounds.gameLoaded()
     }

@@ -81,6 +81,7 @@ public final class MainMenu extends MenuScreen {
     // which tab is showing: 0 Play, 1 Wardrobe
     private int page;
     private final WardrobePage wardrobe = new WardrobePage(this);
+    private final SetupPage setup = new SetupPage(this);
     private final StatsPage stats = new StatsPage(this, ip -> ping == null ? null : ping.icon(ip));
     private final NewsPage news = new NewsPage(this, DISCORD);
     private final ScreenshotsPage screenshots = new ScreenshotsPage(this);
@@ -110,6 +111,14 @@ public final class MainMenu extends MenuScreen {
         devTab = tab;
     }
 
+    /** Dev screenshots only: shows a page of the first-launch setup (-1 finishes it). */
+    public static void devSetup(int index) {
+        if (net.minecraft.client.Minecraft.getInstance().screen instanceof MainMenu menu && menu.setup.showing()) {
+            if (index < 0) menu.setup.devFinish();
+            else menu.setup.devPage(index);
+        }
+    }
+
     public static void devSingleplayer(boolean on) {
         MenuData.get().singleplayer = on;
     }
@@ -133,6 +142,7 @@ public final class MainMenu extends MenuScreen {
             loadWorlds();
         }
         LobbyBridge.arrive();
+        setup.open();
     }
 
     /** Whether OneClient's lobby (the scene behind the menu) is in use. */
@@ -238,7 +248,8 @@ public final class MainMenu extends MenuScreen {
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         beginFrame(g, mouseX, mouseY);
         // the panels fade in as the scene finishes revealing itself, and out while the camera leaves it
-        if (lobby()) fade = Math.min(fade, LobbyBridge.panelAlpha());
+        // (the first-launch setup's card grows out of the startup logo instead)
+        if (lobby() && !(setup.showing() && LobbyBridge.startupActive())) fade = Math.min(fade, LobbyBridge.panelAlpha());
         LobbyBridge.accent(ACCENT);
         if (dev.golemsclient.DevShots.ON) {
             socialOpen = devSocial;
@@ -248,6 +259,13 @@ public final class MainMenu extends MenuScreen {
             }
         }
 
+        if (setup.showing()) {
+            // the first-launch setup: only its card, over the lobby
+            setup.draw();
+            endFrame(g);
+            LobbyBridge.startupFrame(g);
+            return;
+        }
         if (page == 1) {
             // the Wardrobe: the camera is close on your player, so no name tag or splash over it
             drawTopBar();
@@ -284,6 +302,11 @@ public final class MainMenu extends MenuScreen {
     @Override
     protected boolean modalOpen() {
         return socialOpen;
+    }
+
+    /** The first-launch setup was finished: the menu fades in. */
+    void setupFinished() {
+        openedAt = System.currentTimeMillis();
     }
 
     @Override
@@ -984,6 +1007,7 @@ public final class MainMenu extends MenuScreen {
         // a click while the scene opens skips to the end of it
         if (lobby() && LobbyBridge.skipIntro()) return true;
         if (clickHit(event)) return true;
+        if (setup.showing()) return true;
         if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return super.mouseClicked(event, doubleClick);
         if (lobby()) {
             double sx = event.x() / width, sy = event.y() / height;
@@ -1007,6 +1031,7 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (setup.drag((float) event.x() / u)) return true;
         if (draggingVolume) {
             float x = (float) event.x() / u;
             LobbyBridge.setMusicVolume(clamp((x - volumeX0) / Math.max(1f, volumeX1 - volumeX0), 0f, 1f));
@@ -1029,6 +1054,10 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
+        if (setup.release()) {
+            minecraft.options.save();
+            return true;
+        }
         if (draggingVolume) {
             draggingVolume = false;
             LobbyBridge.saveSettings();
@@ -1048,6 +1077,12 @@ public final class MainMenu extends MenuScreen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
+        if (setup.showing()) {
+            if (lobby() && LobbyBridge.skipIntro()) return true;
+            if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) setup.next();
+            else if (key == GLFW.GLFW_KEY_ESCAPE) setup.back();
+            return true;
+        }
         // the Screenshots page's search box and its large view take keys first
         if (page == 4 && screenshots.key(key)) return true;
         if (lobby()) {

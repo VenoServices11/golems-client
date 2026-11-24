@@ -4,8 +4,10 @@
 package dev.golemsclient.oc
 
 import dev.golemsclient.oc.client.PolyPlusLobbyConfig
+import dev.golemsclient.oc.client.PolyPlusConfig
 import dev.golemsclient.oc.client.lobby.LobbyAntics
 import dev.golemsclient.oc.client.lobby.LobbyGrab
+import dev.golemsclient.oc.client.lobby.LobbyFraming
 import dev.golemsclient.oc.client.lobby.LobbyHologram
 import dev.golemsclient.oc.client.lobby.LobbyMusic
 import dev.golemsclient.oc.client.lobby.LobbyReveal
@@ -225,4 +227,46 @@ object LobbyBridge {
         PolyPlusLobbyConfig.lobbyMusicMuted = muted
         PolyPlusLobbyConfig.save()
     }
+
+    // ------------------------------------------------------------------ the first-launch setup
+
+    /** The setup is waiting (decided at startup, so the startup logo can fly into its card). */
+    @JvmStatic
+    fun setupPending(pending: Boolean) {
+        StartupOverlay.setupPending = pending
+        PolyPlusConfig.onboardingCompleted = !pending
+    }
+
+    /** The setup card is showing: your player in the lobby turns to look at it. */
+    @JvmStatic
+    fun setupShowing(showing: Boolean) {
+        LobbyFraming.onboarding = showing
+        if (!showing) PolyPlusConfig.onboardingCompleted = true
+    }
+
+    /** Where the setup card's middle is, -1 to 1 across the window (y up). */
+    @JvmStatic
+    fun setupCard(x: Double, y: Double) = LobbyFraming.card(x, y)
+
+    /** Where the logo and the name land in the setup card, in GUI pixels, and the colour they turn. */
+    @JvmStatic
+    fun setupTargets(mark: FloatArray, word: FloatArray, ink: Int) {
+        StartupOverlay.cardMark = StartupOverlay.Box(mark[0], mark[1], mark[2], mark[3])
+        StartupOverlay.cardWord = StartupOverlay.Box(word[0], word[1], word[2], word[3])
+        StartupOverlay.cardInk = ink and 0xFFFFFF
+    }
+
+    /** 0 to 1 as the setup card grows out of the startup logo (1 when there was no startup). */
+    @JvmStatic
+    fun cardGrow(): Float = StartupOverlay.cardGrow
+
+    /** Your player nods (next page) or waves (finished). */
+    @JvmStatic
+    fun nod() = LobbyFraming.react(LobbyFraming.Reaction.NOD)
+
+    @JvmStatic
+    fun wave() = LobbyFraming.react(LobbyFraming.Reaction.WAVE)
+
+    @JvmStatic
+    fun glance() = LobbyFraming.react(LobbyFraming.Reaction.GLANCE)
 }
