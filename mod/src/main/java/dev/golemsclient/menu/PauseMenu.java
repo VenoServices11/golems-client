@@ -77,6 +77,11 @@ public final class PauseMenu extends MenuScreen {
         }
     }
 
+    /** Dev screenshots only: switches the open pause menu to a tab. */
+    public static void devPage(int index) {
+        if (net.minecraft.client.Minecraft.getInstance().screen instanceof PauseMenu p) p.setPage(index);
+    }
+
     private boolean stepBack() {
         return "stepback".equals(data.pauseStyle);
     }
@@ -92,12 +97,12 @@ public final class PauseMenu extends MenuScreen {
             g.fill(0, 0, width, height, (Math.round(255 * (page == 0 ? 0.45f : 0.6f)) << 24) | ink);
         }
         // darker towards the menu on the right (OneClient's 0.5 -> 0.66 -> 0.8 -> 1 stops)
-        int strips = 48;
-        for (int i = 0; i < strips; i++) {
-            float t0 = 0.5f + 0.5f * i / strips, t1 = 0.5f + 0.5f * (i + 1) / strips;
-            float t = (t0 + t1) / 2f;
+        // one column per GUI pixel, so there's no banding
+        int from = width / 2;
+        for (int x = from; x < width; x++) {
+            float t = (x + 0.5f) / width;
             float a = t < 0.66f ? (t - 0.5f) / 0.16f * 0.72f : t < 0.8f ? 0.72f + (t - 0.66f) / 0.14f * 0.2f : 0.92f + (t - 0.8f) / 0.2f * 0.04f;
-            g.fill(Math.round(width * t0), 0, Math.round(width * t1), height, (Math.round(255 * a * fade) << 24) | ink);
+            g.fill(x, 0, x + 1, height, (Math.round(255 * a * fade) << 24) | ink);
         }
         // a soft vignette at the top and bottom
         g.fillGradient(0, 0, width, Math.round(height * 0.33f), (Math.round(255 * 0.92f * fade) << 24) | ink, ink);

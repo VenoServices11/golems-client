@@ -65,6 +65,7 @@ public final class DevShots {
             mc.pauseGame(false);
             d.pauseStyle = "flat";
         }, 2500, null);
+        step("06c_pause_wardrobe", () -> dev.golemsclient.menu.PauseMenu.devPage(1), 1500, null);
         step("07_lobby_again", () -> mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), 3500,
                 () -> mc.screen instanceof MainMenu && LobbyBridge.showing() && LobbyBridge.panelAlpha() >= 0.99f);
         step("08_news", () -> {
