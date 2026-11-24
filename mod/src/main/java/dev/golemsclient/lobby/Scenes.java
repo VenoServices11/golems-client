@@ -20,7 +20,7 @@ import java.util.stream.Stream;
  */
 public final class Scenes {
     /** A scene that can be picked: built-in (resource path) or a capture (file). */
-    public record Entry(String id, String name, String season, String resource, Path file) {
+    public record Entry(String id, String name, String season, String resource, Path file, long time) {
         public boolean builtIn() {
             return resource != null;
         }
@@ -29,7 +29,9 @@ public final class Scenes {
             if (resource != null) {
                 try (InputStream in = Scenes.class.getResourceAsStream(resource)) {
                     if (in == null) throw new IllegalStateException("missing scene " + resource);
-                    return Scene.read(in);
+                    Scene s = Scene.read(in);
+                    if (time >= 0) s.time = time;
+                    return s;
                 }
             }
             return Scene.read(file);
@@ -52,7 +54,14 @@ public final class Scenes {
                 if (line.isEmpty() || line.startsWith("#")) continue;
                 String[] p = line.split(";");
                 if (p.length < 3) continue;
-                out.add(new Entry(p[0], p[1], p[2], "/assets/golemsclient/scenes/" + p[0] + ".nbt", null));
+                long time = -1;
+                if (p.length > 3) {
+                    try {
+                        time = Long.parseLong(p[3].strip());
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+                out.add(new Entry(p[0], p[1], p[2], "/assets/golemsclient/scenes/" + p[0] + ".nbt", null, time));
             }
         } catch (Exception e) {
             GolemsClient.LOGGER.warn("Couldn't list the lobby scenes", e);
@@ -67,7 +76,7 @@ public final class Scenes {
         try (Stream<Path> files = Files.list(dir)) {
             files.filter(f -> f.getFileName().toString().endsWith(".nbt")).sorted().forEach(f -> {
                 String id = f.getFileName().toString().replaceAll("\\.nbt$", "");
-                out.add(new Entry("capture:" + id, id, "", null, f));
+                out.add(new Entry("capture:" + id, id, "", null, f, -1));
             });
         } catch (Exception e) {
             GolemsClient.LOGGER.warn("Couldn't list the captured scenes", e);
