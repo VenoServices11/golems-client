@@ -4,3 +4,9 @@
 golems-client.iml
 
 /packages/golems_app/icons/generated/
+
+# the Golem's Client mod's Gradle output
+/mod/.gradle/
+/mod/build/
+/mod/run/
+/mod/dist/

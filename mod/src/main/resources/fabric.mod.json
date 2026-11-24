@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "golemsclient",
+  "version": "${version}",
+  "name": "Golem's Client",
+  "description": "The Golem's Client experience in game: branding, main menu and more. By veno15.",
+  "authors": ["veno15 (holygrajl)"],
+  "contact": {
+    "homepage": "https://github.com/VenoServices11/golems-client",
+    "sources": "https://github.com/VenoServices11/golems-client"
+  },
+  "license": "GPL-3.0",
+  "icon": "assets/golemsclient/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.golemsclient.GolemsClient"]
+  },
+  "mixins": ["golemsclient.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~${minecraft}",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

@@ -8,6 +8,8 @@ on:
     paths-ignore:  # server-only changes deploy the server instead (deploy-server.yml)
       - server/**
       - .github/workflows/deploy-server.yml
+      - mod/**
+      - .github/workflows/mod.yml
   workflow_dispatch:
 
 concurrency:

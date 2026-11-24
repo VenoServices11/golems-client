@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "dev.golemsclient.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "LoadingOverlayAccessor",
+    "LoadingOverlayMixin",
+    "MinecraftTitleMixin",
+    "WindowMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}

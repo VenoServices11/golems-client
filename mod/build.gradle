@@ -1,0 +1,47 @@
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+}
+
+version = "${project.mod_version}+mc${project.minecraft_version}"
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Dear ImGui (imgui-java) draws the client's smooth text and shapes; bundled in the jar
+    def imgui = "1.90.0"
+    [
+        "io.github.spair:imgui-java-binding:${imgui}",
+        "io.github.spair:imgui-java-lwjgl3:${imgui}",
+        "io.github.spair:imgui-java-natives-windows:${imgui}",
+        "io.github.spair:imgui-java-natives-linux:${imgui}",
+        "io.github.spair:imgui-java-natives-macos:${imgui}"
+    ].each { dep ->
+        implementation(dep) { transitive = false }
+        include(dep) { transitive = false }
+    }
+}
+
+processResources {
+    inputs.property "version", project.mod_version
+    inputs.property "minecraft", project.minecraft_version
+    filesMatching("fabric.mod.json") {
+        expand "version": inputs.properties.version, "minecraft": inputs.properties.minecraft
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
