@@ -39,8 +39,9 @@ loom {
         client {
             if (project.hasProperty('devshots')) {
                 vmArg "-Dgolemsclient.devshots=true"
-                vmArg "-Dorg.lwjgl.system.allocator=system"
-                vmArg "-Dorg.lwjgl.util.Debug=true"
+                // the virtual screen's software OpenGL (Mesa) crashes in shader linking with jemalloc; LWJGL's debug
+                // allocator avoids it (this is only for the screenshot runs)
+                vmArg "-Dorg.lwjgl.util.DebugAllocator=true"
                 if (project.hasProperty('noText')) vmArg "-Dgolemsclient.debug.noText=true"
                 if (project.hasProperty('noPictures')) vmArg "-Dgolemsclient.debug.noPictures=true"
                 if (project.hasProperty('noShapes')) vmArg "-Dgolemsclient.debug.noShapes=true"
