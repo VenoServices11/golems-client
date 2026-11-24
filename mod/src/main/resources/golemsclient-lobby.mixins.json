@@ -53,7 +53,15 @@
     "compat.iris.MixinIrisFinalPass",
     "compat.iris.MixinIrisPipelineManager",
     "compat.iris.MixinIrisTransformPatcher",
-    "compat.fabric.MixinClientPlayNetworkAddon"
+    "compat.fabric.MixinClientPlayNetworkAddon",
+    "compat.entityculling.MixinNMSCullingHelper",
+    "compat.blur.MixinBlurRenderer",
+    "compat.polyblur.MixinPolyBlurConfigLobby",
+    "compat.lambdynlights.MixinLambDynLights",
+    "compat.mountopacity.MixinEntityHook",
+    "compat.polytime.MixinPolyTimeLevelData",
+    "compat.polyhitbox.MixinPolyHitboxRenderer",
+    "compat.evergreenhud.MixinEvergreenMediaHud"
   ],
   "injectors": {
     "defaultRequire": 1
