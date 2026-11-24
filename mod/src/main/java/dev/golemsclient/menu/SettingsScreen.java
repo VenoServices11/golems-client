@@ -150,7 +150,7 @@ public final class SettingsScreen extends MenuScreen {
             return List.of(new Section("Key binds", keys), section("Controls", ControlsOptionsAccessor.golemsclient$options(o)));
         }, null));
         categories.add(new Category("Mouse", "arrow", mc, () -> List.of(section("Mouse", MouseOptionsAccessor.golemsclient$options(o))), null));
-        categories.add(new Category("Skin", "shirt", mc, this::skin, null));
+        categories.add(new Category("Skin", "shirt", mc, this::skinSections, null));
         categories.add(new Category("Accessibility", "user", mc, () -> List.of(
                 section("Accessibility", AccessibilityOptionsAccessor.golemsclient$options(o)),
                 section("Font", FontOptionsAccessor.golemsclient$options(o))), null));
@@ -194,7 +194,7 @@ public final class SettingsScreen extends MenuScreen {
                 section("Music", o.musicFrequency(), o.musicToast()));
     }
 
-    private List<Section> skin() {
+    private List<Section> skinSections() {
         List<Row> parts = new ArrayList<>();
         for (PlayerModelPart part : PlayerModelPart.values()) {
             parts.add(Row.toggle(part.getName().getString(), null, () -> o.isModelPartEnabled(part), () -> {
@@ -478,7 +478,7 @@ public final class SettingsScreen extends MenuScreen {
 
     /** After one of Minecraft's options changed: saved, and the interface size takes effect. */
     private void changed(OptionValues.Info info) {
-        if (info.option() == o.guiScale()) minecraft.resizeDisplay();
+        if ((Object) info.option() == o.guiScale()) minecraft.resizeDisplay();
         o.save();
     }
 
@@ -532,7 +532,7 @@ public final class SettingsScreen extends MenuScreen {
         dragValue = OptionValues.toSlider(info, v);
         if (info.live()) {
             OptionValues.set(info, v);
-            if (info.option() == o.guiScale()) return;
+            if ((Object) info.option() == o.guiScale()) return;
         }
     }
 
