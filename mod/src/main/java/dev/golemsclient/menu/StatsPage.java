@@ -183,7 +183,8 @@ final class StatsPage {
     private void drawTotals(Report r, float x0, float y0, float x1, float y1) {
         m.card(x0, y0, x1, y1);
         if (r == null) return;
-        if (r.noWorldStats()) {
+        List<String[]> rows = totals(r);
+        if (rows.isEmpty()) {
             float cy = (y0 + y1) / 2f - 14f;
             m.text(Face.SEMIBOLD, "No world stats yet", (x0 + x1) / 2f, cy, 8.5f, MenuScreen.TEXT, Align.CENTER);
             m.text(Face.REGULAR, "Blocks mined, mobs killed and more", (x0 + x1) / 2f, cy + 14f, 6.5f, MenuScreen.TEXT_2, Align.CENTER);
@@ -193,6 +194,17 @@ final class StatsPage {
         float x = x0 + 12f, y = y0 + 12f, iw = x1 - x0 - 24f;
         m.text(Face.BOLD, "Totals", x, y, 9.5f, MenuScreen.TEXT, Align.LEFT);
         y += 20f;
+        for (String[] row : rows) {
+            float h = row[2] == null ? 16f : 22f;
+            if (y + h > y1 - 8f) break;
+            m.text(Face.MEDIUM, row[0], x, y, 7f, MenuScreen.TEXT, Align.LEFT);
+            if (row[2] != null) m.text(Face.REGULAR, m.fit(Face.REGULAR, row[2], 6f, iw - 60f), x, y + 10f, 6f, MenuScreen.TEXT_3, Align.LEFT);
+            m.text(Face.BOLD, row[1], x + iw, y - 0.5f, 8.5f, MenuScreen.TEXT, Align.RIGHT);
+            y += h + 2f;
+        }
+    }
+
+    private static List<String[]> totals(Report r) {
         List<String[]> rows = new ArrayList<>();
         add(rows, "Blocks mined", r.blocksMined(), r.topMined() == null ? null : "Mostly " + r.topMined());
         add(rows, "Mobs killed", r.totals().get(Stat.MOB_KILLS), r.topKilled() == null ? null : "Mostly " + r.topKilled());
@@ -205,14 +217,7 @@ final class StatsPage {
         add(rows, "Villager trades", r.totals().get(Stat.VILLAGER_TRADES), null);
         add(rows, "Animals bred", r.totals().get(Stat.ANIMALS_BRED), null);
         add(rows, "Players killed", r.totals().get(Stat.PLAYER_KILLS), null);
-        for (String[] row : rows) {
-            float h = row[2] == null ? 16f : 22f;
-            if (y + h > y1 - 8f) break;
-            m.text(Face.MEDIUM, row[0], x, y, 7f, MenuScreen.TEXT, Align.LEFT);
-            if (row[2] != null) m.text(Face.REGULAR, m.fit(Face.REGULAR, row[2], 6f, iw - 60f), x, y + 10f, 6f, MenuScreen.TEXT_3, Align.LEFT);
-            m.text(Face.BOLD, row[1], x + iw, y - 0.5f, 8.5f, MenuScreen.TEXT, Align.RIGHT);
-            y += h + 2f;
-        }
+        return rows;
     }
 
     private static void add(List<String[]> rows, String label, Long value, String detail) {
