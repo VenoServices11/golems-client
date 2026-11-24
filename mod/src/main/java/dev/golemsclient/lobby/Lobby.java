@@ -439,10 +439,11 @@ public final class Lobby {
             float k = phase == Phase.LOADING ? 0f : revealProgress();
             float e = 1f - (float) Math.pow(1f - k, 3);
             double fx = -Math.sin(Math.toRadians(yaw)), fz = Math.cos(Math.toRadians(yaw));
-            cx -= fx * 9.0 * (1f - e);
-            cz -= fz * 9.0 * (1f - e);
-            cy += 20.0 * (1f - e);
-            pitch = Mth.lerp(e, 62f, pitch);
+            // a short swoop that stays over the scene, so its edges never show
+            cx -= fx * 4.0 * (1f - e);
+            cz -= fz * 4.0 * (1f - e);
+            cy += 8.0 * (1f - e);
+            pitch = Mth.lerp(e, 48f, pitch);
         }
         return new double[] {cx, cy, cz, yaw, pitch};
     }

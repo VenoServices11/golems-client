@@ -247,7 +247,8 @@ public final class Scene {
 
     private boolean open(BlockState[] cells, int x, int y, int z) {
         if (x < 0 || y < 0 || z < 0 || x >= sx || y >= sy || z >= sz) return y >= 0; // the box's floor stays closed
-        return !cells[index(x, y, z)].canOcclude();
+        // only full, solid cubes hide a neighbour: a path, farmland, slab or stair leaves a gap you can see through
+        return !cells[index(x, y, z)].isSolidRender();
     }
 
     // ------------------------------------------------------------------ building
