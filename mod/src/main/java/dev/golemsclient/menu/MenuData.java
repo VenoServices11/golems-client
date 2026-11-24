@@ -37,6 +37,15 @@ public final class MenuData {
     /** The music volume before the menu's mute button was pressed (-1 when not muted by it). */
     public double mutedMusicVolume = -1;
 
+    // the lobby (the world behind the menu)
+    public boolean lobbyEnabled = true;
+    /** "auto" (the season's scene) or a scene id. */
+    public String lobbyScene = "auto";
+    /** "scene" (as captured), "day", "sunset", "night" or "real" (follows your clock). */
+    public String lobbyTime = "scene";
+    public boolean lobbyOpening = true;
+    public boolean captureScenes = true;
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static MenuData instance;
 
@@ -77,6 +86,8 @@ public final class MenuData {
                     if (d.servers == null) d.servers = new ArrayList<>();
                     d.servers.removeIf(s -> s == null || s.ip == null || s.ip.isBlank());
                     if (d.dismissedAnnouncement == null) d.dismissedAnnouncement = "";
+                    if (d.lobbyScene == null) d.lobbyScene = "auto";
+                    if (d.lobbyTime == null) d.lobbyTime = "scene";
                     return d;
                 }
             }

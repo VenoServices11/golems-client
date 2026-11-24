@@ -143,6 +143,11 @@ public final class MainMenu extends MenuScreen {
     }
 
     @Override
+    public net.minecraft.sounds.Music getBackgroundMusic() {
+        return net.minecraft.sounds.Musics.MENU;
+    }
+
+    @Override
     public boolean isPauseScreen() {
         return false;
     }
@@ -156,6 +161,12 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        if (dev.golemsclient.lobby.Lobby.active()) {
+            // the lobby world is behind: only a soft shade at the top and bottom
+            g.fillGradient(0, 0, width, height / 5, 0x66000000, 0x00000000);
+            g.fillGradient(0, height * 3 / 5, width, height, 0x00000000, 0x80000000);
+            return;
+        }
         renderPanorama(g, partialTick);
         renderBlurredBackground(g);
         // a darker top and bottom, so the bar and the cards read well over any panorama
@@ -201,7 +212,17 @@ public final class MainMenu extends MenuScreen {
 
     // ------------------------------------------------------------------ player
 
+    /** Where your player is on screen (units): in the lobby, the real one in the world. */
     private float[] playerBox() {
+        if (dev.golemsclient.lobby.Lobby.active() && minecraft.player != null) {
+            var pos = minecraft.player.getPosition(minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(true));
+            float[] feet = dev.golemsclient.lobby.Lobby.project(pos);
+            float[] head = dev.golemsclient.lobby.Lobby.project(pos.add(0, 1.95, 0));
+            if (feet != null && head != null && feet[1] > head[1]) {
+                float ph = (feet[1] - head[1]) / u, pw = ph * 0.6f, cx = head[0] / u;
+                return new float[] {cx - pw / 2f, head[1] / u, cx + pw / 2f, feet[1] / u};
+            }
+        }
         float ph = Math.min(H * 0.42f, 200f);
         float feet = H * 0.72f;
         float pw = ph * 0.62f;
@@ -210,6 +231,17 @@ public final class MainMenu extends MenuScreen {
 
     private void drawPlayer(GuiGraphics g) {
         float[] b = playerBox();
+        if (dev.golemsclient.lobby.Lobby.active()) {
+            // the real you stands in the world: look toward the mouse, and the nametag over your head
+            float cx = (b[0] + b[2]) / 2f, headY = b[1] + (b[3] - b[1]) * 0.1f;
+            if (!dragging && !socialOpen) {
+                dev.golemsclient.lobby.LobbyInput.lookYaw = -clamp((mx - cx) / w * 80f, -40f, 40f);
+                dev.golemsclient.lobby.LobbyInput.lookPitch = clamp((my - headY) / H * 50f, -30f, 30f);
+            }
+            nametag(cx, b[1]);
+            if (inside(b[0], b[1], b[2], b[3])) pointer = true;
+            return;
+        }
         PlayerSkin s = skin().get();
         PlayerModel model = s.model() == PlayerModelType.SLIM ? slim : wide;
 
@@ -231,17 +263,20 @@ public final class MainMenu extends MenuScreen {
         float scale = 0.97f * (y1 - y0) / 2.125f;
         g.submitSkinRenderState(model, s.body().texturePath(), scale, playerPitch, playerYaw, -1.0625f, x0, y0, x1, y1);
 
-        // the nametag over the head
+        nametag(cx, b[1]);
+        if (inside(b[0], b[1], b[2], b[3])) pointer = true;
+    }
+
+    /** Your name in a small pill over your head (top = the top of your head, units). */
+    private void nametag(float cx, float top) {
         String name = minecraft.getUser().getName();
         float nameSize = 8f, youSize = 6.5f;
         float nw = textW(Face.SEMIBOLD, name, nameSize), yw = textW(Face.MEDIUM, "You", youSize);
-        float tw = nw + 5f + yw + 14f, ty = b[1] - 22f;
+        float tw = nw + 5f + yw + 14f, ty = top - 22f;
         rect(cx - tw / 2f, ty, cx + tw / 2f, ty + 16f, 4f, 0xB40E0E10);
         outline(cx - tw / 2f, ty, cx + tw / 2f, ty + 16f, 4f, LINE);
         text(Face.SEMIBOLD, name, cx - tw / 2f + 7f, ty + 8f - nameSize * 0.6f, nameSize, TEXT, Align.LEFT);
         text(Face.MEDIUM, "You", cx + tw / 2f - 7f, ty + 8f - youSize * 0.6f, youSize, TEXT_2, Align.RIGHT);
-
-        if (inside(b[0], b[1], b[2], b[3])) pointer = true;
     }
 
     private void drawSplash(GuiGraphics g) {
@@ -687,6 +722,10 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (dragging && dev.golemsclient.lobby.Lobby.active()) {
+            dev.golemsclient.lobby.LobbyInput.turnOffset += (float) dx * 2.0f / Math.max(0.5f, u);
+            return true;
+        }
         if (dragging) {
             playerYaw += (float) dx * 2.5f / Math.max(0.5f, u);
             playerPitch = clamp(playerPitch - (float) dy * 2.5f / Math.max(0.5f, u), -40f, 40f);

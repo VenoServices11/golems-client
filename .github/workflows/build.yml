@@ -11,6 +11,7 @@ on:
       - mod/**
       - .github/workflows/mod.yml
       - .github/workflows/devshots.yml
+      - .github/workflows/scenes.yml
   workflow_dispatch:
 
 concurrency:

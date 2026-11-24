@@ -27,7 +27,9 @@ public final class GolemsClient implements ClientModInitializer {
         DebugScreenEntry version = DebugScreenEntries.getEntry(DebugScreenEntries.GAME_VERSION);
         if (version != null) DebugScreenEntries.register(DebugScreenEntries.GAME_VERSION, new BrandDebugEntry(version));
 
+        dev.golemsclient.lobby.Lobby.register();
         DevShots.register();
+        SceneMaker.register();
         LOGGER.info("Golem's Client {} (mod {})", version(), modVersion());
     }
 

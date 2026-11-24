@@ -118,9 +118,20 @@ public final class DevShots {
 
     /** Right after the overlay drew into the window: saves the frame if a shot is due, then runs the next step. */
     public static void afterFrame() {
+        if (SceneMaker.ON && SceneMaker.pendingShot != null) {
+            String id = SceneMaker.pendingShot;
+            SceneMaker.pendingShot = null;
+            save(Minecraft.getInstance().gameDirectory.toPath().resolve("scenes").resolve(id + ".png"));
+            return;
+        }
         if (!ON || pendingShot == null) return;
         String name = pendingShot;
         pendingShot = null;
+        save(Minecraft.getInstance().gameDirectory.toPath().resolve("devshots").resolve(name + ".png"));
+        next();
+    }
+
+    private static void save(Path file) {
         try {
             Minecraft mc = Minecraft.getInstance();
             int w = mc.getWindow().getWidth(), h = mc.getWindow().getHeight();
@@ -138,13 +149,15 @@ public final class DevShots {
                     flipped.put(y * w * 4 + i, (i & 3) == 3 ? (byte) 0xFF : b);
                 }
             }
-            Path dir = mc.gameDirectory.toPath().resolve("devshots");
-            Files.createDirectories(dir);
-            STBImageWrite.stbi_write_png(dir.resolve(name + ".png").toString(), w, h, 4, flipped, w * 4);
-            GolemsClient.LOGGER.info("[DevShots] saved {}", name);
+            Files.createDirectories(file.getParent());
+            STBImageWrite.stbi_write_png(file.toString(), w, h, 4, flipped, w * 4);
+            GolemsClient.LOGGER.info("[DevShots] saved {}", file.getFileName());
         } catch (Throwable t) {
-            GolemsClient.LOGGER.error("[DevShots] couldn't save {}", name, t);
+            GolemsClient.LOGGER.error("[DevShots] couldn't save {}", file, t);
         }
+    }
+
+    private static void next() {
         index++;
         if (index >= STEPS.size()) {
             GolemsClient.LOGGER.info("[DevShots] done");
