@@ -34,6 +34,19 @@ public final class Overlay {
 
     private record Image(String path, float x0, float y0, float x1, float y1, int argb) { }
 
+    private record Outline(float x0, float y0, float x1, float y1, float radius, int argb, float thickness) { }
+
+    private record Circle(float cx, float cy, float r, int argb, boolean filled, float thickness) { }
+
+    private record Line(float x0, float y0, float x1, float y1, int argb, float thickness) { }
+
+    private record Tex(int id, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, int argb,
+                       float radius) { }
+
+    private record Clip(float x0, float y0, float x1, float y1) { }
+
+    private record Unclip() { }
+
     private static final List<Object> OPS = new ArrayList<>();
     private static final ImGuiImplGlfw GLFW_IMPL = new ImGuiImplGlfw();
     private static final ImGuiImplGl3 GL3_IMPL = new ImGuiImplGl3();
@@ -68,6 +81,50 @@ public final class Overlay {
         OPS.add(new Image(path, x0, y0, x1, y1, argb));
     }
 
+    /** One of the mod's icons (assets/golemsclient/textures/icons/NAME.png), white tinted by argb, size x size. */
+    public static void icon(String name, float x, float y, float size, int argb) {
+        image("/assets/golemsclient/textures/icons/" + name + ".png", x, y, x + size, y + size, argb);
+    }
+
+    /** A rounded rectangle's border, thickness in GUI pixels. */
+    public static void outline(float x0, float y0, float x1, float y1, float radius, int argb, float thickness) {
+        if (failed || (argb >>> 24) == 0 || x1 <= x0 || y1 <= y0) return;
+        OPS.add(new Outline(x0, y0, x1, y1, radius, argb, thickness));
+    }
+
+    public static void circle(float cx, float cy, float r, int argb) {
+        if (failed || (argb >>> 24) == 0 || r <= 0) return;
+        OPS.add(new Circle(cx, cy, r, argb, true, 0f));
+    }
+
+    public static void ring(float cx, float cy, float r, int argb, float thickness) {
+        if (failed || (argb >>> 24) == 0 || r <= 0) return;
+        OPS.add(new Circle(cx, cy, r, argb, false, thickness));
+    }
+
+    public static void line(float x0, float y0, float x1, float y1, int argb, float thickness) {
+        if (failed || (argb >>> 24) == 0) return;
+        OPS.add(new Line(x0, y0, x1, y1, argb, thickness));
+    }
+
+    /** An OpenGL texture (by id), the part between (u0, v0) and (u1, v1), with rounded corners. */
+    public static void texture(int id, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1,
+                               int argb, float radius) {
+        if (failed || id <= 0 || (argb >>> 24) == 0) return;
+        OPS.add(new Tex(id, x0, y0, x1, y1, u0, v0, u1, v1, argb, radius));
+    }
+
+    /** Draws only inside this rectangle until {@link #unclip()}. */
+    public static void clip(float x0, float y0, float x1, float y1) {
+        if (failed) return;
+        OPS.add(new Clip(x0, y0, x1, y1));
+    }
+
+    public static void unclip() {
+        if (failed) return;
+        OPS.add(new Unclip());
+    }
+
     /** Text width in GUI pixels, for centring; an estimate until the fonts are ready. */
     public static float width(Face face, String s, float size) {
         ImFont f = ready ? Fonts.pick(face, size * guiScale()) : null;
@@ -87,6 +144,7 @@ public final class Overlay {
     public static void renderFrame() {
         if (failed || OPS.isEmpty()) {
             OPS.clear();
+            Textures.releasePending();
             return;
         }
         int previousFbo = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
@@ -123,6 +181,7 @@ public final class Overlay {
             }
         } finally {
             OPS.clear();
+            Textures.releasePending();
             try {
                 GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
             } catch (Throwable ignored) {
@@ -131,6 +190,7 @@ public final class Overlay {
     }
 
     private static void draw(ImDrawList dl, float fx, float fy) {
+        int clips = 0;
         for (Object op : OPS) {
             if (op instanceof Rect r) {
                 dl.addRectFilled(r.x0() * fx, r.y0() * fy, r.x1() * fx, r.y1() * fy, abgr(r.argb()), r.radius() * fy);
@@ -138,6 +198,31 @@ public final class Overlay {
                 int tex = Textures.get(im.path());
                 if (tex != 0) {
                     dl.addImage(tex, im.x0() * fx, im.y0() * fy, im.x1() * fx, im.y1() * fy, 0f, 0f, 1f, 1f, abgr(im.argb()));
+                }
+            } else if (op instanceof Outline o) {
+                dl.addRect(o.x0() * fx, o.y0() * fy, o.x1() * fx, o.y1() * fy, abgr(o.argb()), o.radius() * fy, 0,
+                        Math.max(1f, o.thickness() * fy));
+            } else if (op instanceof Circle c) {
+                if (c.filled()) dl.addCircleFilled(c.cx() * fx, c.cy() * fy, c.r() * fy, abgr(c.argb()));
+                else dl.addCircle(c.cx() * fx, c.cy() * fy, c.r() * fy, abgr(c.argb()), 0, Math.max(1f, c.thickness() * fy));
+            } else if (op instanceof Line l) {
+                dl.addLine(l.x0() * fx, l.y0() * fy, l.x1() * fx, l.y1() * fy, abgr(l.argb()), Math.max(1f, l.thickness() * fy));
+            } else if (op instanceof Tex t) {
+                Textures.prepareForeign(t.id());
+                if (t.radius() > 0f) {
+                    dl.addImageRounded(t.id(), t.x0() * fx, t.y0() * fy, t.x1() * fx, t.y1() * fy, t.u0(), t.v0(), t.u1(),
+                            t.v1(), abgr(t.argb()), t.radius() * fy);
+                } else {
+                    dl.addImage(t.id(), t.x0() * fx, t.y0() * fy, t.x1() * fx, t.y1() * fy, t.u0(), t.v0(), t.u1(), t.v1(),
+                            abgr(t.argb()));
+                }
+            } else if (op instanceof Clip c) {
+                dl.pushClipRect(c.x0() * fx, c.y0() * fy, c.x1() * fx, c.y1() * fy, true);
+                clips++;
+            } else if (op instanceof Unclip) {
+                if (clips > 0) {
+                    dl.popClipRect();
+                    clips--;
                 }
             } else if (op instanceof Text t) {
                 int px = Math.max(4, Math.round(t.size() * fy));
@@ -151,6 +236,7 @@ public final class Overlay {
                 dl.addText(f, px, x, t.y() * fy, abgr(t.argb()), t.s());
             }
         }
+        while (clips-- > 0) dl.popClipRect();
     }
 
     private static void init() {

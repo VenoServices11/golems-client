@@ -3,10 +3,15 @@
   "package": "dev.golemsclient.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "ConnectScreenMixin",
     "LoadingOverlayAccessor",
     "LoadingOverlayMixin",
     "MinecraftTitleMixin",
+    "SplashRendererAccessor",
+    "TitleScreenSwapMixin",
     "WindowMixin"
   ],
-  "injectors": { "defaultRequire": 1 }
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

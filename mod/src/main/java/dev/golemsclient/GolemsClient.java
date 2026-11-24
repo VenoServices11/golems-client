@@ -30,6 +30,13 @@ public final class GolemsClient implements ClientModInitializer {
         LOGGER.info("Golem's Client {} (mod {})", version(), modVersion());
     }
 
+    /** emeraldgolem3, the owner. */
+    public static final java.util.UUID OWNER = java.util.UUID.fromString("dabe852b-94dd-4bb9-b18d-151c206be824");
+
+    public static boolean isOwner(java.util.UUID id) {
+        return OWNER.equals(id);
+    }
+
     /**
      * The Golem's Client version people know: the launcher's (it passes -Dgolemsclient.version); the mod's own version
      * when the game was started some other way.

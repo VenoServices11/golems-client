@@ -153,6 +153,26 @@ pub async fn owner_stats(state: &LauncherState, key: &str) -> Result<OwnerStats,
     }
 }
 
+/// Posts the banner shown on Golem's Client's in-game main menu; an empty text takes it down.
+pub async fn post_announcement(state: &LauncherState, key: &str, text: &str) -> Result<(), String> {
+    let response = state
+        .services
+        .requester
+        .http()
+        .post(format!("{PRESENCE_URL}/launcher/announce"))
+        .json(&serde_json::json!({ "key": key, "text": text }))
+        .timeout(TIMEOUT)
+        .send()
+        .await
+        .map_err(|_| "Couldn't reach the server.".to_string())?;
+    match response.status().as_u16() {
+        200 => Ok(()),
+        403 => Err("Wrong owner key.".to_string()),
+        404 => Err("The server needs updating.".to_string()),
+        code => Err(format!("The server answered with an error ({code}).")),
+    }
+}
+
 fn owner_key_file() -> Option<PathBuf> {
     golems_common::paths::config_dir()
         .ok()

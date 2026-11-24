@@ -4,7 +4,9 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use freya::prelude::*;
-use golems_core::stats::{OwnerStats, StatsUser, owner_stats, save_owner_key, saved_owner_key};
+use golems_core::stats::{
+    OwnerStats, StatsUser, owner_stats, post_announcement, save_owner_key, saved_owner_key,
+};
 
 use super::{section_header, settings_page};
 use crate::components::{Avatar, Button, IconType, TextInput};
@@ -23,6 +25,8 @@ impl Component for SettingsOwner {
         let mut has_key = use_state(|| saved_owner_key().is_some());
         let mut stats = use_state(|| None::<Result<OwnerStats, String>>);
         let mut revision = use_state(|| 0u32);
+        let banner = use_state(String::new);
+        let banner_status = use_state(|| None::<String>);
 
         // refresh every few seconds while the page is open
         use_hook(move || {
@@ -93,7 +97,39 @@ impl Component for SettingsOwner {
                 .into_element();
         }
 
-        page = page.child(section_header("Golem's Client users"));
+        page = page
+            .child(section_header("Main menu banner"))
+            .child(settings_row(
+                IconType::Announcement01,
+                "Announcement",
+                banner_status.read().clone().unwrap_or_else(|| {
+                    "Shown at the top of everyone's in-game main menu until they dismiss it.".to_string()
+                }),
+                rect()
+                    .horizontal()
+                    .spacing(8.)
+                    .cross_align(Alignment::Center)
+                    .child(
+                        TextInput::new(banner)
+                            .placeholder("Live tonight at 8 PM on TikTok")
+                            .width(Size::px(240.)),
+                    )
+                    .child(
+                        Button::new()
+                            .primary()
+                            .small()
+                            .on_press(move |_| announce(key, banner, banner_status, false))
+                            .text("Post"),
+                    )
+                    .child(
+                        Button::new()
+                            .secondary()
+                            .small()
+                            .on_press(move |_| announce(key, banner, banner_status, true))
+                            .text("Take down"),
+                    ),
+            ))
+            .child(section_header("Golem's Client users"));
 
         match stats.read().clone() {
             None => {
@@ -138,6 +174,43 @@ impl Component for SettingsOwner {
         )
         .into_element()
     }
+}
+
+/// Posts the text in the banner field (or takes the banner down), then says how it went.
+fn announce(
+    key: State<String>,
+    mut banner: State<String>,
+    mut status: State<Option<String>>,
+    take_down: bool,
+) {
+    let key = key.peek().trim().to_string();
+    let text = if take_down {
+        String::new()
+    } else {
+        banner.peek().trim().to_string()
+    };
+    if !take_down && text.is_empty() {
+        return;
+    }
+    status.set(Some("Sending...".to_string()));
+    spawn(async move {
+        let sent = text.clone();
+        let result = crate::launcher::off_ui(async move {
+            match crate::launcher::state() {
+                Ok(state) => post_announcement(&state, &key, &sent).await,
+                Err(_) => Err("The launcher is still starting.".to_string()),
+            }
+        })
+        .await;
+        match result {
+            Ok(()) if text.is_empty() => status.set(Some("Taken down.".to_string())),
+            Ok(()) => {
+                status.set(Some(format!("Posted: \"{text}\"")));
+                banner.set(String::new());
+            }
+            Err(error) => status.set(Some(error)),
+        }
+    });
 }
 
 fn note(text: impl Into<String>) -> impl IntoElement {

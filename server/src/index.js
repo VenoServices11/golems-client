@@ -36,6 +36,8 @@
  *   POST /launcher/leave   { uuid }               -> { ok }   when it closes
  *   POST /launcher/stats   { key }                -> { total, in_launcher, playing, new_today, active_today, users }
  *   GET  /launcher/dashboard                      -> the owner's stats page (asks for the owner key)
+ *   GET  /launcher/announcement                   -> { id, text, at } the banner on the in-game main menu ({} if none)
+ *   POST /launcher/announce { key, text }         -> { ok, id }   posts the banner ("" takes it down)
  *
  * The owner key is a secret:  npx wrangler secret put ADMIN_KEY
  */
@@ -71,6 +73,13 @@ export default {
     }
     if (request.method === "GET" && url.pathname === "/launcher/dashboard") {
       return new Response(DASHBOARD_HTML, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+    }
+    if (request.method === "GET" && url.pathname === "/launcher/announcement") {
+      try {
+        return await launcherAnnouncement(env);
+      } catch (e) {
+        return json({}, 200);
+      }
     }
     if (request.method === "GET" && url.pathname === "/admin/users") {
       try {
@@ -109,6 +118,7 @@ export default {
         case "/launcher/checkin": return await launcherCheckin(env, body, now);
         case "/launcher/leave": return await launcherLeave(env, body);
         case "/launcher/stats": return await launcherStats(env, body, now);
+        case "/launcher/announce": return await launcherAnnounce(env, body, now);
         default: return json({ error: "not found" }, 404);
       }
     } catch (e) {
@@ -164,6 +174,7 @@ async function ensureUsers(env) {
     // Golem's Client (the launcher): everyone who used it, and who has it open right now
     env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_users (uuid TEXT PRIMARY KEY, name TEXT, version TEXT, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_online (uuid TEXT PRIMARY KEY, seen INTEGER NOT NULL, state TEXT NOT NULL, instance TEXT, mc TEXT)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS launcher_announcements (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, at INTEGER NOT NULL)"),
   ]);
   usersReady = true;
 }
@@ -589,6 +600,26 @@ async function launcherStats(env, body, now) {
     + "ORDER BY (o.seen >= ?) DESC, u.last_seen DESC LIMIT 1000")
     .bind(since, since, since, since).all()).results || [];
   return json({ total, in_launcher, playing, new_today, active_today, users: rows });
+}
+
+/** The banner on Golem's Client's main menu: the newest announcement, unless it was taken down ("" posted). */
+async function launcherAnnouncement(env) {
+  await ensureUsers(env);
+  const row = await env.DB.prepare("SELECT id, text, at FROM launcher_announcements ORDER BY id DESC LIMIT 1").first();
+  const body = row && row.text ? { id: String(row.id), text: row.text, at: row.at } : {};
+  return new Response(JSON.stringify(body), {
+    headers: { "content-type": "application/json", "cache-control": "public, max-age=60" },
+  });
+}
+
+/** The owner posts (or, with "", takes down) the main menu banner. Needs the owner key. */
+async function launcherAnnounce(env, body, now) {
+  if (!isOwnerKey(env, body.key)) return json({ error: "wrong key" }, 403);
+  await ensureUsers(env);
+  const text = typeof body.text === "string" ? body.text.trim().slice(0, 140) : "";
+  const result = await env.DB.prepare("INSERT INTO launcher_announcements (text, at) VALUES (?, ?)").bind(text, now).run();
+  await env.DB.prepare("DELETE FROM launcher_announcements WHERE id < ?").bind((result.meta && result.meta.last_row_id || 0) - 20).run();
+  return json({ ok: true, id: String(result.meta && result.meta.last_row_id || "") });
 }
 
 const DASHBOARD_HTML = `<!doctype html>
