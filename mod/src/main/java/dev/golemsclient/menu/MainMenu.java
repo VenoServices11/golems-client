@@ -83,6 +83,22 @@ public final class MainMenu extends MenuScreen {
         super(Component.literal("Golem's Client"));
     }
 
+    // dev screenshots only
+    private static boolean devSocial;
+    private static int devTab = -1;
+
+    public static void devSocial(boolean open) {
+        devSocial = open;
+    }
+
+    public static void devTab(int tab) {
+        devTab = tab;
+    }
+
+    public static void devSingleplayer(boolean on) {
+        MenuData.get().singleplayer = on;
+    }
+
     /** Off with -Dgolemsclient.vanillaMenu=true (for testing). */
     public static boolean enabled() {
         return !Boolean.getBoolean("golemsclient.vanillaMenu");
@@ -155,6 +171,13 @@ public final class MainMenu extends MenuScreen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         beginFrame(mouseX, mouseY);
+        if (dev.golemsclient.DevShots.ON) {
+            socialOpen = devSocial;
+            if (devTab >= 0) {
+                openTab(devTab);
+                devTab = -1;
+            }
+        }
 
         drawPlayer(g);
         drawSplash(g);

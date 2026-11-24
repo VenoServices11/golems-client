@@ -10,6 +10,7 @@ on:
       - .github/workflows/deploy-server.yml
       - mod/**
       - .github/workflows/mod.yml
+      - .github/workflows/devshots.yml
   workflow_dispatch:
 
 concurrency:

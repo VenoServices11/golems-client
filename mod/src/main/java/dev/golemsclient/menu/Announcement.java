@@ -38,6 +38,12 @@ public final class Announcement {
         return current;
     }
 
+    /** Dev screenshots only: shows this text without asking the server. */
+    public static void devFake(String text) {
+        current = new Post("dev", text, System.currentTimeMillis() / 1000L - 600L);
+        askedAt = Long.MAX_VALUE / 2;
+    }
+
     private static void fetch() {
         try {
             HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();

@@ -13,5 +13,6 @@ public abstract class WindowMixin {
     @Inject(method = "updateDisplay", at = @At("HEAD"))
     private void golemsclient$overlay(CallbackInfo ci) {
         Overlay.renderFrame();
+        dev.golemsclient.DevShots.afterFrame();
     }
 }

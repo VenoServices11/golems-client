@@ -45,3 +45,15 @@ java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
 }
+
+// "Dev screenshots" workflow: ./gradlew runClient -Pdevshots walks through the screens and saves screenshots.
+loom {
+    runs {
+        client {
+            if (project.hasProperty('devshots')) {
+                vmArg "-Dgolemsclient.devshots=true"
+                programArgs "--width", "1600", "--height", "900"
+            }
+        }
+    }
+}
