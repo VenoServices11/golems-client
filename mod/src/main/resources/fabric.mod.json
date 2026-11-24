@@ -3,7 +3,7 @@
   "id": "golemsclient",
   "version": "${version}",
   "name": "Golem's Client",
-  "description": "The Golem's Client experience in game: branding, main menu, the 3D lobby and more. By veno15. The lobby is ported from OneClient's PolyPlus by Polyfrost (GPL-3.0).",
+  "description": "The Golem's Client experience in game: branding, main menu, the 3D lobby and more. By veno15.",
   "authors": [
     "veno15 (holygrajl)"
   ],
