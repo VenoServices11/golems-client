@@ -525,8 +525,8 @@ public final class MainMenu extends MenuScreen {
             ix += s + 5f;
         }
         iconAt = null;
-        String label = all + "  →";
-        float lw = textW(Face.MEDIUM, label, 6.5f) + 14f;
+        String label = all;
+        float lw = textW(Face.MEDIUM, label, 6.5f) + 26f;
         float lx1 = x1 - 8f, lx0 = lx1 - lw;
         boolean over = inside(lx0, cy - 8f, lx1, cy + 8f);
         float hv = anim("all", over);
