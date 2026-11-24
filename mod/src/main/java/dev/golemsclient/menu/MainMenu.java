@@ -83,6 +83,7 @@ public final class MainMenu extends MenuScreen {
     private final WardrobePage wardrobe = new WardrobePage(this);
     private final StatsPage stats = new StatsPage(this, ip -> ping == null ? null : ping.icon(ip));
     private final NewsPage news = new NewsPage(this, DISCORD);
+    private final ScreenshotsPage screenshots = new ScreenshotsPage(this);
     // pressing on your player in the scene: a short hold or a drag picks it up, a click makes it react
     private boolean pressingPlayer, grabbing;
     private long pressedAt;
@@ -164,11 +165,19 @@ public final class MainMenu extends MenuScreen {
     private void setPage(int next) {
         if (next == page) return;
         if (page == 1) wardrobe.close();
+        if (page == 4) screenshots.close();
         page = next;
         lobbyPanel = false;
         if (page == 1) wardrobe.open();
         if (page == 2) stats.open();
         if (page == 3) news.open();
+        if (page == 4) screenshots.open();
+    }
+
+    @Override
+    public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+        if (page == 4 && screenshots.type(event.codepoint())) return true;
+        return super.charTyped(event);
     }
 
     @Override
@@ -180,6 +189,7 @@ public final class MainMenu extends MenuScreen {
     @Override
     public void removed() {
         if (page == 1) wardrobe.close();
+        if (page == 4) screenshots.close();
         if (ping != null) ping.stop();
         for (LevelSummary s : worlds) Textures.release("world:" + s.getLevelId());
     }
@@ -252,6 +262,9 @@ public final class MainMenu extends MenuScreen {
             drawTopBar();
             news.draw(w - PAD - SIDE_W - 8f);
             drawPlayCard();
+        } else if (page == 4) {
+            drawTopBar();
+            screenshots.draw();
         } else {
             drawPlayer(g);
             drawSplash(g);
@@ -444,10 +457,7 @@ public final class MainMenu extends MenuScreen {
             case 1 -> setPage(1);
             case 2 -> setPage(2);
             case 3 -> setPage(3);
-            case 4 -> {
-                openFolder(minecraft.gameDirectory.toPath().resolve("screenshots"));
-                showToast("Opened your screenshots folder. The Screenshots tab is coming soon.");
-            }
+            case 4 -> setPage(4);
             default -> showToast(TABS[index] + " is coming in a Golem's Client update soon.");
         }
     }
@@ -657,6 +667,7 @@ public final class MainMenu extends MenuScreen {
         float y = (float) mouseY / u;
         if (page == 1 && wardrobe.scroll(mouseY, scrollY)) return true;
         if (page == 3 && news.scroll(mouseY, scrollY)) return true;
+        if (page == 4 && screenshots.scroll(mouseY, scrollY)) return true;
         if (lobbyPanel && y >= sceneListY0 && y < sceneListY1) {
             sceneScroll -= (float) scrollY;
             return true;
@@ -1037,6 +1048,8 @@ public final class MainMenu extends MenuScreen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
+        // the Screenshots page's search box and its large view take keys first
+        if (page == 4 && screenshots.key(key)) return true;
         if (lobby()) {
             // OneClient's little key reactions, and any key skips the opening
             LobbyBridge.key(key, !socialOpen && !lobbyPanel);

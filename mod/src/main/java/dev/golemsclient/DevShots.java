@@ -65,6 +65,19 @@ public final class DevShots {
                     new dev.golemsclient.menu.News.Post("1", "Welcome to Golem's Client", "Thanks for trying it out. Tell me what you think in the Discord.", "", System.currentTimeMillis() / 1000L - 86400L * 2)));
             MainMenu.devTab(3);
         }, 1500, null);
+        step("09_screenshots", () -> {
+            // the shots taken so far stand in for screenshots, so the grid has something to show
+            try {
+                java.nio.file.Path from = mc.gameDirectory.toPath().resolve("devshots"), to = mc.gameDirectory.toPath().resolve("screenshots");
+                java.nio.file.Files.createDirectories(to);
+                try (var files = java.nio.file.Files.list(from)) {
+                    for (java.nio.file.Path f : files.toList()) java.nio.file.Files.copy(f, to.resolve(f.getFileName()), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (Exception e) {
+                GolemsClient.LOGGER.warn("[DevShots] couldn't copy the shots", e);
+            }
+            MainMenu.devTab(4);
+        }, 3000, null);
         ClientTickEvents.END_CLIENT_TICK.register(DevShots::tick);
         // if a step hangs, write every thread's stack to the log (once)
         Thread watchdog = new Thread(() -> {

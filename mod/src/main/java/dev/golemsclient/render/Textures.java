@@ -238,6 +238,26 @@ public final class Textures {
         }
     }
 
+    /** Pixels decoded (and shrunk) away from the render thread, ready to upload with {@link #upload(String, Pixels)}. */
+    public record Pixels(int w, int h, byte[] rgba) { }
+
+    /** Decodes a picture and shrinks it to at most maxW wide. Safe off the render thread; null if it can't be read. */
+    public static Pixels shrunk(byte[] bytes, int maxW) {
+        Decoded d = bytes == null || bytes.length == 0 ? null : decode(bytes);
+        if (d == null) return null;
+        if (d.w() <= maxW) return new Pixels(d.w(), d.h(), d.rgba());
+        int th = Math.max(1, Math.round(d.h() * (maxW / (float) d.w())));
+        return new Pixels(maxW, th, shrink(d, maxW, th));
+    }
+
+    /** Uploads pixels made by {@link #shrunk} under a key (render thread); release it with {@link #release}. */
+    public static GuiTexture upload(String key, Pixels p) {
+        if (MADE.containsKey(key)) return MADE.get(key);
+        GuiTexture t = p == null ? null : upload(key, p.rgba(), p.w(), p.h(), false);
+        MADE.put(key, t);
+        return t;
+    }
+
     private static GuiTexture upload(String label, byte[] rgba, int w, int h, boolean pixelated) {
         ByteBuffer buf = MemoryUtil.memAlloc(rgba.length);
         try {
