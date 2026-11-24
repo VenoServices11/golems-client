@@ -461,6 +461,16 @@ async fn start(
         jvm_args.push(arg);
     }
 
+    // Golem's Client in game: the launcher's version for the window title and F3, and the Golem's Client mod,
+    // loaded from the launcher's folder so it can't be removed from the instance by accident
+    jvm_args.push(format!("-Dgolemsclient.version={}", env!("CARGO_PKG_VERSION")));
+    if matches!(cluster.mc_loader, GameLoader::Fabric)
+        && !jvm_args.iter().any(|arg| arg.starts_with("-Dfabric.addMods="))
+        && let Some(jar) = crate::game::golems_mod::jar_for(state, &mc_version).await
+    {
+        jvm_args.push(format!("-Dfabric.addMods={}", jar.display()));
+    }
+
     let crash_dir = cluster.dir()?.join("crash-reports");
     golems_io::create_dir_all(&crash_dir).await.ok();
     let error_file = crash_dir.join("hs_err_pid").display().to_string();

@@ -3,6 +3,7 @@ mod error;
 pub mod fabric;
 mod folder_packs;
 mod game_options;
+pub mod golems_mod;
 pub mod gpu;
 mod heal;
 mod launch;
