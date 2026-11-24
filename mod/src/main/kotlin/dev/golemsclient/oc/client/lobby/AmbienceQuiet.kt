@@ -3,7 +3,6 @@
 package dev.golemsclient.oc.client.lobby
 
 import net.minecraft.client.Minecraft
-import dev.golemsclient.oc.support.UiSounds
 import dev.golemsclient.oc.client.PolyPlusLobbyConfig
 import dev.golemsclient.oc.client.gui.pausescreen.PauseEvergreenMedia
 import dev.golemsclient.oc.client.utils.ClientPlatform
@@ -30,7 +29,7 @@ object AmbienceQuiet {
         val now = PolyPlusLobbyConfig.lobbyMusicMuted || watching && PauseEvergreenMedia.playing()
         if (now == quiet) return
         quiet = now
-        runCatching { (UiSounds as Any as UiAmbienceAccess).`golems$setQuiet`(now) }
+        // (OneClient also quietened OneConfig's menu ambience here; Golem's Client has none)
     }
 
     private fun menusOpen(): Boolean = Minecraft.getInstance().level == null || ClientPlatform.currentScreen() != null
