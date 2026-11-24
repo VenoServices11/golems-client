@@ -8,24 +8,13 @@ import dev.golemsclient.GolemsClient;
  * seconds. Everything fades with the loading screen.
  */
 public final class LoadingScreen {
-    private static final String[] TIPS = {
-            "Join the Golem's Community Discord: discord.gg/q67qzHG2kf",
-            "Follow @holygrajl on TikTok",
-            "Golem's Client is made by veno15",
-            "Press F3 to see your FPS, coordinates and more",
-            "Press F2 to take a screenshot",
-            "Press F5 to switch between first and third person",
-            "Hold Tab to see who's online on a server",
-            "Turn mods on and off in the launcher's Mods tab",
-            "Change your skin in the launcher's Wardrobe",
-            "Press F3 + T to reload resource packs",
-    };
+    /** The tips, from assets/golemsclient/texts/tips.txt (one per line). */
+    private static final String[] TIPS = readTips();
     private static final long TIP_EVERY_MS = 4500L;
     private static final int TEXT = 0xFFEDEDEF;
     private static final int TEXT_SECONDARY = 0xFF9A9AA2;
     private static final int TRACK = 0xFF26262B;
 
-    private static final int START_TIP = (int) (Math.random() * TIPS.length);
     private static final long STARTED = System.currentTimeMillis();
 
     private static float firstHalfX = Float.NaN;
@@ -76,10 +65,23 @@ public final class LoadingScreen {
 
         // the tip, changing every few seconds with a short fade
         long since = System.currentTimeMillis() - STARTED;
-        int index = (int) ((START_TIP + since / TIP_EVERY_MS) % TIPS.length);
+        int index = (int) ((since / TIP_EVERY_MS) % TIPS.length);
         float phase = (since % TIP_EVERY_MS) / (float) TIP_EVERY_MS;
         float tipA = Math.min(1f, Math.min(phase, 1f - phase) * 8f);
         Overlay.text(Overlay.Face.REGULAR, TIPS[index], cx, cy + 9f, 8f, alpha(TEXT_SECONDARY, opacity * tipA), Overlay.Align.CENTER);
+    }
+
+    private static String[] readTips() {
+        try (var in = LoadingScreen.class.getResourceAsStream("/assets/golemsclient/texts/tips.txt")) {
+            if (in != null) {
+                var lines = new java.util.ArrayList<>(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)
+                        .lines().map(String::strip).filter(l -> !l.isEmpty() && !l.startsWith("#")).toList());
+                java.util.Collections.shuffle(lines);
+                if (!lines.isEmpty()) return lines.toArray(String[]::new);
+            }
+        } catch (java.io.IOException ignored) {
+        }
+        return new String[]{"Golem's Client is made by veno15"};
     }
 
     private static int alpha(int argb, float a) {

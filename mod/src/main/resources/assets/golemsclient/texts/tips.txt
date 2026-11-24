@@ -1,0 +1,18 @@
+# One tip per line, shown on the loading screen in a random order. Lines starting with # are ignored.
+Join the Golem's Community Discord: discord.gg/q67qzHG2kf
+Follow @holygrajl on TikTok for streams
+Found a bug? Tell us in the Discord
+Golem's Client is made by veno15
+Change your skin in the launcher's Wardrobe
+Each instance keeps its own worlds, mods and settings
+The launcher can import instances from Modrinth, Prism and other launchers
+Turn mods on and off from the instance's Mods tab in the launcher
+Press F1 to hide the HUD for clean screenshots
+Press F2 to take a screenshot
+Press F3 to see your FPS, coordinates and more
+Press F3 + B to show hitboxes
+Press F3 + G to show chunk borders
+Press F3 + H to see advanced item tooltips
+Press F3 + T to reload resource packs
+Press F5 to switch between first and third person
+Hold Tab to see who's online on a server
