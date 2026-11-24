@@ -61,6 +61,7 @@ public final class Lobby {
     private static long phaseAt;
     private static long placedAt;
     private static CameraType savedCamera;
+    private static Boolean savedHideGui;
     private static LobbyInput input;
     private static boolean arrived;
     private static LobbyScreen screen;
@@ -326,6 +327,9 @@ public final class Lobby {
         arrived = false;
         if (savedCamera == null) savedCamera = mc.options.getCameraType();
         mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+        // no block outline or hand in the lobby
+        if (savedHideGui == null) savedHideGui = mc.options.hideGui;
+        mc.options.hideGui = true;
         input = new LobbyInput();
         mc.player.input = input;
         if (!MenuData.get().lobbyOpening) {
@@ -371,6 +375,10 @@ public final class Lobby {
         if (savedCamera != null) {
             mc.options.setCameraType(savedCamera);
             savedCamera = null;
+        }
+        if (savedHideGui != null) {
+            mc.options.hideGui = savedHideGui;
+            savedHideGui = null;
         }
         phase = Phase.OFF;
         server = null;

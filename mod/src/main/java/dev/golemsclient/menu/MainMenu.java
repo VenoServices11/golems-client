@@ -288,7 +288,7 @@ public final class MainMenu extends MenuScreen {
         float[] b = playerBox();
         if (dev.golemsclient.lobby.Lobby.active()) {
             float cx = (b[0] + b[2]) / 2f;
-            splash.draw(g, (cx + 70f) * u, (b[1] + 4f) * u, u, fade);
+            splash.draw(g, (cx + 100f) * u, (b[1] + 8f) * u, u, fade);
             return;
         }
         splash.draw(g, (b[2] + (b[2] - b[0]) * 0.62f) * u, (b[1] + (b[3] - b[1]) * 0.02f) * u, u, fade);
