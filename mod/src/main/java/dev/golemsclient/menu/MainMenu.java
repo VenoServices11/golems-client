@@ -73,7 +73,7 @@ public final class MainMenu extends MenuScreen {
     private int pickWorld;
 
 
-    private float playerYaw = 22f;
+    private float playerYaw = 16f;
     private float playerPitch = -4f;
     private boolean dragging;
     private float tabX = -1f, tabW;
@@ -249,7 +249,7 @@ public final class MainMenu extends MenuScreen {
     private void drawSplash(GuiGraphics g) {
         if (minecraft.options.hideSplashTexts().get()) return;
         float[] b = playerBox();
-        splash.draw(g, (b[2] + (b[2] - b[0]) * 0.15f) * u, (b[1] + (b[3] - b[1]) * 0.1f) * u, u, fade);
+        splash.draw(g, (b[2] + (b[2] - b[0]) * 0.62f) * u, (b[1] + (b[3] - b[1]) * 0.02f) * u, u, fade);
     }
 
     // ------------------------------------------------------------------ top bar
@@ -480,7 +480,7 @@ public final class MainMenu extends MenuScreen {
         }
         recentRow(x0, x1, y1, recent.size(), pickServer, i -> {
             pickServer = i;
-        }, i -> serverIcon(ping.savedIcon(recent.get(i).ip), recent.get(i), 0f, 0f, 0f), "All servers", this::openServers);
+        }, i -> serverIcon(ping.icon(recent.get(i).ip), recent.get(i), 0f, 0f, 0f), "All servers", this::openServers);
     }
 
     private void drawWorld(float x0, float cy0, float x1, float bx0, float by0, float bx1, float by1, float y1) {
@@ -495,7 +495,10 @@ public final class MainMenu extends MenuScreen {
             worldIcon(pick, x0 + 10f, cy0, ic);
             float tx = x0 + 10f + ic + 9f;
             text(Face.BOLD, fit(Face.BOLD, pick.getLevelName(), 10f, x1 - 10f - tx), tx, cy0 + 1f, 10f, TEXT, Align.LEFT);
-            text(Face.MONO, fit(Face.MONO, pick.getLevelId(), 6.5f, x1 - 10f - tx), tx, cy0 + 15f, 6.5f, TEXT_2, Align.LEFT);
+            String gm = pick.getGameMode().getName();
+            String mode = pick.isHardcore() ? "Hardcore" : gm.isEmpty() ? "World" : Character.toUpperCase(gm.charAt(0)) + gm.substring(1);
+            text(Face.MEDIUM, fit(Face.MEDIUM, mode + (pick.hasCommands() ? " \u00b7 Cheats on" : ""), 6.5f, x1 - 10f - tx),
+                    tx, cy0 + 15f, 6.5f, TEXT_2, Align.LEFT);
             text(Face.REGULAR, "Last played " + ago(pick.getLastPlayed()), tx, cy0 + 26f, 6.5f, TEXT_3, Align.LEFT);
             playButton(bx0, by0, bx1, by1, "Play", () -> openWorld(pick));
         }
@@ -529,7 +532,8 @@ public final class MainMenu extends MenuScreen {
         float hv = anim("all", over);
         rect(lx0, cy - 8f, lx1, cy + 8f, 4f, mix(0x0FFFFFFF, 0x26FFFFFF, hv));
         outline(lx0, cy - 8f, lx1, cy + 8f, 4f, LINE);
-        text(Face.MEDIUM, label, (lx0 + lx1) / 2f, cy - 6.5f * 0.6f, 6.5f, mix(TEXT_2, TEXT, hv), Align.CENTER);
+        text(Face.MEDIUM, label, lx0 + 8f, cy - 6.5f * 0.6f, 6.5f, mix(TEXT_2, TEXT, hv), Align.LEFT);
+        Overlay.icon("arrow", (lx1 - 14f + hv * 1.5f) * u, (cy - 3.5f) * u, 7f * u, c(mix(TEXT_2, TEXT, hv)));
         hit(lx0, cy - 8f, lx1, cy + 8f, openAll);
     }
 

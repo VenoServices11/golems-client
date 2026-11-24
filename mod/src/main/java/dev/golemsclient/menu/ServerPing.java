@@ -13,6 +13,8 @@ import net.minecraft.server.network.EventLoopGroupHolder;
  */
 final class ServerPing {
     private final ServerStatusPinger pinger = new ServerStatusPinger();
+    /** Icons servers sent this session, so recents keep theirs after another one is picked. */
+    private static final java.util.Map<String, byte[]> ICONS = new java.util.concurrent.ConcurrentHashMap<>();
     private final ServerList saved;
     private ServerData data;
     private boolean pinged;
@@ -28,7 +30,9 @@ final class ServerPing {
         if (data == null || !data.ip.equalsIgnoreCase(ip)) {
             ServerData known = saved.get(ip);
             data = new ServerData(known != null ? known.name : name, ip, ServerData.Type.OTHER);
-            if (known != null && known.getIconBytes() != null) data.setIconBytes(known.getIconBytes());
+            byte[] icon = ICONS.get(ip.toLowerCase(java.util.Locale.ROOT));
+            if (icon == null && known != null) icon = known.getIconBytes();
+            if (icon != null) data.setIconBytes(icon);
             data.ping = -1L;
             pinged = false;
         }
@@ -56,8 +60,13 @@ final class ServerPing {
         return data != null && data.players == null && System.currentTimeMillis() - startedAt < 7000L;
     }
 
-    /** The saved server list's icon for an address, if it has one. */
-    byte[] savedIcon(String ip) {
+    /** A server's icon: from its answer if it was pinged here, else from the saved server list. */
+    byte[] icon(String ip) {
+        if (data != null && data.ip.equalsIgnoreCase(ip) && data.getIconBytes() != null) {
+            ICONS.put(ip.toLowerCase(java.util.Locale.ROOT), data.getIconBytes());
+        }
+        byte[] seen = ICONS.get(ip.toLowerCase(java.util.Locale.ROOT));
+        if (seen != null) return seen;
         ServerData known = saved.get(ip);
         return known != null ? known.getIconBytes() : null;
     }
