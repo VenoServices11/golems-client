@@ -189,6 +189,27 @@ public final class Textures {
     // ------------------------------------------------------------------ helpers
 
     static Decoded decode(byte[] bytes) {
+        // PNGs through Minecraft's own reader; anything else (JPEG album art) through stb_image
+        if (bytes.length > 8 && (bytes[0] & 0xFF) == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G') {
+            try (com.mojang.blaze3d.platform.NativeImage img = com.mojang.blaze3d.platform.NativeImage.read(
+                    com.mojang.blaze3d.platform.NativeImage.Format.RGBA, new java.io.ByteArrayInputStream(bytes))) {
+                return copy(img);
+            } catch (Exception e) {
+                // fall through to stb
+            }
+        }
+        return decodeStb(bytes);
+    }
+
+    private static Decoded copy(com.mojang.blaze3d.platform.NativeImage img) {
+        int w = img.getWidth(), h = img.getHeight();
+        if (w <= 0 || h <= 0 || w > 4096 || h > 4096) return null;
+        byte[] out = new byte[w * h * 4];
+        MemoryUtil.memByteBuffer(img.getPointer(), out.length).get(out);
+        return new Decoded(w, h, out);
+    }
+
+    private static Decoded decodeStb(byte[] bytes) {
         ByteBuffer file = MemoryUtil.memAlloc(bytes.length);
         try (MemoryStack stack = MemoryStack.stackPush()) {
             file.put(bytes).flip();
