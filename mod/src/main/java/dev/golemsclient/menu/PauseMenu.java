@@ -74,6 +74,7 @@ public final class PauseMenu extends MenuScreen {
         if (!decided) {
             decided = true;
             staged = stepBack() && PauseBridge.enter();
+            if (stepBack() && !staged) showToast("No room to step back here, so it's Flat this time. Step back needs open space around you.");
         }
     }
 

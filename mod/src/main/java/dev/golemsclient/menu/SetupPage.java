@@ -43,6 +43,7 @@ final class SetupPage {
     // ------------------------------------------------------------------ the card
 
     void draw() {
+        if (page != 1) previewAt = null;
         // left of the middle, like OneClient's (it moves right a little on wide windows)
         float extra = Math.max(0f, m.w - MenuScreen.H * 16f / 9f);
         x0 = MenuScreen.PAD + 24f + extra * (1f + 0.58f) / 4f;
@@ -142,13 +143,18 @@ final class SetupPage {
         float cw = (iw - 3f * (count - 1)) / count;
         for (int i = 0; i < count; i++) {
             final int scale = i;
-            String label = i == 0 ? "Auto" : String.valueOf(i);
+            String label = i == 0 ? "Auto (" + max + ")" : String.valueOf(i);
             chip(px + i * (cw + 3f), y, cw, label, current == i || (i == 0 && current > max), () -> {
                 o.guiScale().set(scale);
                 Minecraft.getInstance().resizeDisplay();
             });
         }
         y += 30f;
+        // under the card: Minecraft's hotbar at the size picked (drawn after the menu, in drawAfter)
+        int scale = (int) Math.round(Minecraft.getInstance().getWindow().getGuiScale());
+        previewAt = new float[] {x0 + CW / 2f, y0 + CH + 12f};
+        m.text(Face.REGULAR, "Your hotbar at size " + scale + (current == 0 ? " (Auto)" : ""), x0 + CW / 2f, y0 + CH + 12f + 22f / m.u + 5f,
+                6.5f, MenuScreen.TEXT_2, Align.CENTER);
 
         m.text(Face.MONO, "PAUSE SCREEN", px, y, 5.5f, MenuScreen.TEXT_3, Align.LEFT);
         y += 10f;
@@ -245,6 +251,19 @@ final class SetupPage {
         Overlay.circle((sx + sh / 2f + (sw - sh) * k) * m.u, (sy + sh / 2f) * m.u, (sh / 2f - 2f) * m.u, m.c(0xFFFFFFFF));
         m.text(Face.MONO, on ? "ON" : "OFF", sx + sw + 6f, sy + 3.5f, 5.5f, on ? MenuScreen.TEXT : MenuScreen.TEXT_3, Align.LEFT);
         m.hit(x, y, x + cw, y + h, flip);
+    }
+
+    private float[] previewAt;
+
+    /** After the menu is drawn: the hotbar preview on the Look and feel page. */
+    void drawAfter(net.minecraft.client.gui.GuiGraphics g) {
+        if (!showing || page != 1 || previewAt == null || pageAnim < 0.9f) return;
+        if (LobbyBridge.startupActive()) return;
+        int x = Math.round(previewAt[0] * m.u) - 91, y = Math.round(previewAt[1] * m.u);
+        g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,
+                net.minecraft.resources.Identifier.withDefaultNamespace("hud/hotbar"), x, y, 182, 22);
+        g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,
+                net.minecraft.resources.Identifier.withDefaultNamespace("hud/hotbar_selection"), x - 1, y - 1, 24, 23);
     }
 
     private boolean draggingFov;

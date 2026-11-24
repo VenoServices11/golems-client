@@ -263,6 +263,7 @@ public final class MainMenu extends MenuScreen {
             // the first-launch setup: only its card, over the lobby
             setup.draw();
             endFrame(g);
+            setup.drawAfter(g);
             LobbyBridge.startupFrame(g);
             return;
         }

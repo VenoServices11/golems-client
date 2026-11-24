@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ConnectScreenMixin",
+    "CrashPatchScreenMixin",
     "CrashReportMixin",
     "LoadingOverlayAccessor",
     "LoadingOverlayMixin",

@@ -67,7 +67,14 @@ public final class SettingsScreen extends MenuScreen {
         this.startGuiScale = o.guiScale().get();
         this.startMipmaps = o.mipmapLevels().get();
         build();
-        open(categories.get(0));
+        // the first category with its own page (Video opens Sodium's screen when Sodium is installed)
+        for (Category c : categories) {
+            if (c.sections() != null) {
+                current = c;
+                sections = c.sections().get();
+                break;
+            }
+        }
     }
 
     /** True once after a screen here asked for Minecraft's own Options screen ("Classic options"). */
@@ -351,8 +358,8 @@ public final class SettingsScreen extends MenuScreen {
             owner = shown.isEmpty() ? "NOTHING FOUND" : "RESULTS FOR \"" + query.toUpperCase(Locale.ROOT) + "\"";
         } else {
             shown = sections;
-            title = current.label();
-            owner = current.owner();
+            title = current == null ? "Settings" : current.label();
+            owner = current == null ? "" : current.owner();
         }
         text(Face.BOLD, title, px, y0 + 14f, 12f, TEXT, Align.LEFT);
         text(Face.MONO, fit(Face.MONO, owner, 5.5f, iw), px, y0 + 31f, 5.5f, TEXT_3, Align.LEFT);
