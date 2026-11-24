@@ -64,7 +64,9 @@ final class SetupPage {
         float rise = (1f - grow) * (PILL_CENTER - CH / 2f);
         float cx = x0 + CW / 2f, cy = y0 + CH / 2f + rise;
         float saved = m.fade;
-        m.card(cx - sw / 2f, cy - sh / 2f, cx + sw / 2f, cy + sh / 2f);
+        // more solid than the menu's cards, so the lobby doesn't show through the text
+        m.rect(cx - sw / 2f, cy - sh / 2f, cx + sw / 2f, cy + sh / 2f, 8f, 0xF2141417);
+        m.outline(cx - sw / 2f, cy - sh / 2f, cx + sw / 2f, cy + sh / 2f, 8f, MenuScreen.LINE);
         float content = MenuScreen.clamp((grow - 0.45f) / 0.55f, 0f, 1f);
         m.fade = saved * content;
         if (m.fade <= 0.01f) {
@@ -292,7 +294,7 @@ final class SetupPage {
         float by = y1 - 30f, bh = 20f;
         boolean last = page == PAGES.length - 1;
         if (page > 0) {
-            button(x + 14f, by, 64f, bh, "Back", "prev", false, this::back);
+            button(x + 14f, by, 64f, bh, "Back", "arrow_left", false, this::back);
             ghost(x + 14f + 64f + 10f, by, bh, "Skip setup", this::finish);
         }
         // the dots
@@ -303,7 +305,7 @@ final class SetupPage {
                     MenuScreen.mix(0x40FFFFFF, MenuScreen.ACCENT, k));
         }
         String next = page == 0 ? "Got it" : last ? "Finish" : "Next";
-        button(x + CW - 14f - 78f, by, 78f, bh, next, "next", true, this::next);
+        button(x + CW - 14f - 78f, by, 78f, bh, next, "arrow", true, this::next);
     }
 
     private void button(float x, float y, float bw, float bh, String label, String icon, boolean primary, Runnable action) {
@@ -318,7 +320,7 @@ final class SetupPage {
         float tw = m.textW(Face.SEMIBOLD, label, 7f), is = 7f, total = tw + 5f + is;
         float tx = x + bw / 2f - total / 2f;
         int ink = primary ? 0xFFFFFFFF : MenuScreen.mix(MenuScreen.TEXT_2, MenuScreen.TEXT, hv);
-        if (icon.equals("prev")) {
+        if (icon.equals("arrow_left")) {
             Overlay.icon(icon, tx * m.u, (y + bh / 2f - is / 2f) * m.u, is * m.u, m.c(ink));
             m.text(Face.SEMIBOLD, label, tx + is + 5f, y + bh / 2f - 7f * 0.6f, 7f, ink, Align.LEFT);
         } else {
