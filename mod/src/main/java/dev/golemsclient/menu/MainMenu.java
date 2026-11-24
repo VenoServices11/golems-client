@@ -76,6 +76,9 @@ public final class MainMenu extends MenuScreen {
     private boolean dragging;
     private float tabX = -1f, tabW;
     private boolean socialOpen;
+    private boolean lobbyPanel;
+    private boolean draggingVolume;
+    private float volumeX0, volumeX1;
 
     public MainMenu() {
         super(Component.literal("Golem's Client"));
@@ -193,7 +196,8 @@ public final class MainMenu extends MenuScreen {
         drawTopBar();
         drawAnnouncement();
         drawLeft();
-        drawPlayCard();
+        if (lobbyPanel && (dev.golemsclient.lobby.Lobby.active() || !data.lobbyEnabled)) drawLobbyPanel();
+        else drawPlayCard();
         drawFooter();
         if (socialOpen) drawSocial();
         endFrame(g);
@@ -336,6 +340,9 @@ public final class MainMenu extends MenuScreen {
         float ix = hx - 8f - textW(Face.SEMIBOLD, name, 8.5f) - 18f;
         ix = iconButton("quit", ix, y + 9f, "Quit game", () -> minecraft.stop());
         ix = iconButton("settings", ix, y + 9f, "Options", () -> minecraft.setScreen(new OptionsScreen(this, minecraft.options)));
+        if (dev.golemsclient.lobby.Lobby.active() || !data.lobbyEnabled) {
+            ix = iconButton("image", ix, y + 9f, "Customize your lobby", () -> lobbyPanel = !lobbyPanel);
+        }
         ix = iconButton("cloud", ix, y + 9f, "Realms", () -> minecraft.setScreen(new com.mojang.realmsclient.RealmsMainScreen(this)));
         Announcement.Post post = Announcement.get();
         if (post != null && post.id().equals(data.dismissedAnnouncement)) {
@@ -454,6 +461,126 @@ public final class MainMenu extends MenuScreen {
     }
 
     // ------------------------------------------------------------------ play card
+
+    // ------------------------------------------------------------------ customize your lobby
+
+    private void drawLobbyPanel() {
+        float x1 = w - PAD, x0 = x1 - SIDE_W - 8f;
+        float slide = (1f - anim("lobbyPanel", true)) * 10f;
+        float y0 = 50f + slide, y1 = H - 26f;
+        card(x0, y0, x1, y1);
+        float x = x0 + 12f, y = y0 + 12f, iw = x1 - x0 - 24f;
+        text(Face.BOLD, "Customize your lobby", x, y, 9.5f, TEXT, Align.LEFT);
+        closeButton(x1 - 18f, y + 5f, () -> lobbyPanel = false);
+        y += 22f;
+
+        MenuData d = data;
+        label("SCENE", x, y);
+        y += 10f;
+        List<dev.golemsclient.lobby.Scenes.Entry> scenes = dev.golemsclient.lobby.Scenes.all();
+        y = option(x, y, iw, "Automatic", "The season's scene", "auto".equals(d.lobbyScene), () -> setScene("auto"));
+        for (var e : scenes.subList(0, Math.min(scenes.size(), 7))) {
+            String sub = e.builtIn() ? (e.season().isEmpty() ? "Built in" : "Built in \u00b7 " + e.season()) : "Captured on a server";
+            y = option(x, y, iw, e.name(), sub, e.id().equals(d.lobbyScene), () -> setScene(e.id()));
+        }
+        y += 6f;
+        label("TIME OF DAY", x, y);
+        y += 10f;
+        String[][] times = {{"scene", "Scene"}, {"day", "Day"}, {"sunset", "Sunset"}, {"night", "Night"}, {"real", "Clock"}};
+        float cw = (iw - 4f * 3f) / 5f;
+        for (int i = 0; i < times.length; i++) {
+            String id = times[i][0];
+            chip(x + i * (cw + 3f), y, cw, times[i][1], id.equals(d.lobbyTime), () -> {
+                d.lobbyTime = id;
+                d.save();
+                dev.golemsclient.lobby.Lobby.applyTime();
+            });
+        }
+        y += 24f;
+        label("MUSIC", x, y);
+        y += 10f;
+        var music = minecraft.options.getSoundSourceOptionInstance(SoundSource.MUSIC);
+        volumeX0 = x;
+        volumeX1 = x + iw - 34f;
+        float v = (float) (double) music.get();
+        rect(volumeX0, y + 5f, volumeX1, y + 7f, 1f, 0x26FFFFFF);
+        rect(volumeX0, y + 5f, volumeX0 + (volumeX1 - volumeX0) * v, y + 7f, 1f, ACCENT);
+        Overlay.circle((volumeX0 + (volumeX1 - volumeX0) * v) * u, (y + 6f) * u, 4f * u, c(0xFFFFFFFF));
+        text(Face.MONO, Math.round(v * 100) + "%", x + iw, y + 2f, 6.5f, TEXT_2, Align.RIGHT);
+        hit(volumeX0 - 4f, y - 2f, volumeX1 + 4f, y + 14f, () -> {
+            draggingVolume = true;
+            double nv = Math.max(0.0, Math.min(1.0, (mx - volumeX0) / Math.max(1f, volumeX1 - volumeX0)));
+            minecraft.options.getSoundSourceOptionInstance(SoundSource.MUSIC).set(nv);
+        });
+        y += 22f;
+        y = toggle(x, y, iw, "Opening animation", "The camera swoops in and you run in", d.lobbyOpening, () -> {
+            d.lobbyOpening = !d.lobbyOpening;
+            d.save();
+        });
+        y = toggle(x, y, iw, "Save scenes from servers", "When you leave a server, its spot becomes a scene", d.captureScenes, () -> {
+            d.captureScenes = !d.captureScenes;
+            d.save();
+        });
+        toggle(x, y, iw, "Lobby", "Turn off for a plain background", d.lobbyEnabled, () -> {
+            d.lobbyEnabled = !d.lobbyEnabled;
+            d.save();
+            if (!d.lobbyEnabled) dev.golemsclient.lobby.Lobby.turnOff();
+            else dev.golemsclient.lobby.Lobby.restart();
+        });
+    }
+
+    private void setScene(String id) {
+        if (id.equals(data.lobbyScene)) return;
+        data.lobbyScene = id;
+        data.save();
+        dev.golemsclient.lobby.Lobby.restart();
+    }
+
+    private void label(String s, float x, float y) {
+        text(Face.MONO, s, x, y, 5.5f, TEXT_3, Align.LEFT);
+    }
+
+    private float option(float x, float y, float iw, String title, String sub, boolean on, Runnable action) {
+        float h = 24f;
+        boolean over = inside(x, y, x + iw, y + h);
+        float hv = anim("opt:" + title, over);
+        rect(x, y, x + iw, y + h, 5f, on ? 0x26E5484D : mix(0x0AFFFFFF, 0x1AFFFFFF, hv));
+        if (on) outline(x, y, x + iw, y + h, 5f, 0x80E5484D);
+        text(Face.SEMIBOLD, fit(Face.SEMIBOLD, title, 7.5f, iw - 30f), x + 8f, y + 4f, 7.5f, TEXT, Align.LEFT);
+        text(Face.REGULAR, fit(Face.REGULAR, sub, 6f, iw - 30f), x + 8f, y + 14f, 6f, TEXT_2, Align.LEFT);
+        if (on) Overlay.circle((x + iw - 10f) * u, (y + h / 2f) * u, 3f * u, c(ACCENT));
+        hit(x, y, x + iw, y + h, action);
+        return y + h + 3f;
+    }
+
+    private void chip(float x, float y, float cw, String label, boolean on, Runnable action) {
+        boolean over = inside(x, y, x + cw, y + 18f);
+        float hv = anim("chip:" + label, over);
+        rect(x, y, x + cw, y + 18f, 4f, on ? ACCENT : mix(0x0FFFFFFF, 0x24FFFFFF, hv));
+        text(Face.MEDIUM, label, x + cw / 2f, y + 9f - 6.5f * 0.6f, 6.5f, on ? 0xFFFFFFFF : mix(TEXT_2, TEXT, hv), Align.CENTER);
+        hit(x, y, x + cw, y + 18f, action);
+    }
+
+    private float toggle(float x, float y, float iw, String title, String sub, boolean on, Runnable action) {
+        float h = 26f;
+        text(Face.SEMIBOLD, title, x, y + 3f, 7.5f, TEXT, Align.LEFT);
+        text(Face.REGULAR, fit(Face.REGULAR, sub, 6f, iw - 36f), x, y + 13f, 6f, TEXT_2, Align.LEFT);
+        float sw = 22f, sh = 12f, sx = x + iw - sw, sy = y + 6f;
+        float k = anim("tg:" + title, on);
+        rect(sx, sy, sx + sw, sy + sh, sh / 2f, mix(0xFF2A2A30, ACCENT, k));
+        Overlay.circle((sx + sh / 2f + (sw - sh) * k) * u, (sy + sh / 2f) * u, (sh / 2f - 2f) * u, c(0xFFFFFFFF));
+        hit(x, y, x + iw, y + h, action);
+        return y + h;
+    }
+
+    private void closeButton(float cx, float cy, Runnable action) {
+        float r = 7f;
+        boolean over = inside(cx - r, cy - r, cx + r, cy + r);
+        float hv = anim("close", over);
+        if (hv > 0.01f) Overlay.circle(cx * u, cy * u, r * u, c(alpha(0x1FFFFFFF, hv)));
+        Overlay.icon("close", (cx - 4.5f) * u, (cy - 4.5f) * u, 9f * u, c(mix(TEXT_2, TEXT, hv)));
+        hit(cx - r, cy - r, cx + r, cy + r, action);
+    }
 
     private void drawPlayCard() {
         float x1 = w - PAD, x0 = x1 - SIDE_W - 8f;
@@ -727,6 +854,12 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (draggingVolume) {
+            float x = (float) event.x() / u;
+            double v = Math.max(0.0, Math.min(1.0, (x - volumeX0) / Math.max(1f, volumeX1 - volumeX0)));
+            minecraft.options.getSoundSourceOptionInstance(SoundSource.MUSIC).set(v);
+            return true;
+        }
         if (dragging && dev.golemsclient.lobby.Lobby.active()) {
             dev.golemsclient.lobby.LobbyInput.turnOffset += (float) dx * 2.0f / Math.max(0.5f, u);
             return true;
@@ -741,6 +874,10 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
+        if (draggingVolume) {
+            draggingVolume = false;
+            minecraft.options.save();
+        }
         dragging = false;
         return super.mouseReleased(event);
     }

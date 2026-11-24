@@ -8,6 +8,7 @@
     "GuiMixin",
     "LoadingOverlayAccessor",
     "LoadingOverlayMixin",
+    "MinecraftDisconnectMixin",
     "MinecraftTitleMixin",
     "OptionsMixin",
     "SplashRendererAccessor",

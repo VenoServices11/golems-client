@@ -73,7 +73,10 @@ public final class Lobby {
     public static void register() {
         ServerLifecycleEvents.SERVER_STARTED.register(Lobby::onServerStarted);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, srv) -> onJoin(handler.player, srv));
-        ClientTickEvents.END_CLIENT_TICK.register(mc -> tick());
+        ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+            Captures.tick(mc);
+            tick();
+        });
     }
 
     // ------------------------------------------------------------------ state
@@ -134,6 +137,32 @@ public final class Lobby {
 
     public static long phaseStarted() {
         return phaseAt;
+    }
+
+    /** Shows the scene again (after the scene or the lobby was changed in its settings). */
+    public static void restart() {
+        Minecraft mc = Minecraft.getInstance();
+        if (!enabled()) return;
+        if (active()) mc.disconnect(screen(), false);
+        stop();
+        mc.setScreen(request());
+    }
+
+    /** Leaves the lobby for the plain menu (the lobby was turned off). */
+    public static void turnOff() {
+        Minecraft mc = Minecraft.getInstance();
+        if (active()) mc.disconnect(new MainMenu(), false);
+        stop();
+        mc.setScreen(new MainMenu());
+    }
+
+    /** The time of day setting changed: the lobby's sky follows at once. */
+    public static void applyTime() {
+        MinecraftServer srv = server;
+        Scene s = scene;
+        if (srv == null || s == null) return;
+        long time = timeOfDay(s);
+        srv.execute(() -> srv.overworld().setDayTime(time));
     }
 
     // ------------------------------------------------------------------ making the world
