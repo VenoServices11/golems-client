@@ -54,6 +54,12 @@ object LobbyBridge {
     @JvmStatic
     fun departProgress(): Float = LobbyScene.departProgress
 
+    /** The Wardrobe page is open: the camera moves in close on your player, like OneClient's. */
+    @JvmStatic
+    fun wardrobe(open: Boolean) {
+        LobbyWardrobe.open = open
+    }
+
     @JvmStatic
     fun accent(argb: Int) {
         LobbyHologram.accent = argb and 0xFFFFFF

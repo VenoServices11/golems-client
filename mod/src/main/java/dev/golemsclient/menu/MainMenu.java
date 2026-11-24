@@ -78,6 +78,9 @@ public final class MainMenu extends MenuScreen {
     private float tabX = -1f, tabW;
     // where OneClient's startup animation ends (GUI pixels: x, y, width, height)
     private float[] startupMark, startupWord, startupLine;
+    // which tab is showing: 0 Play, 1 Wardrobe
+    private int page;
+    private final WardrobePage wardrobe = new WardrobePage(this);
     // pressing on your player in the scene: a short hold or a drag picks it up, a click makes it react
     private boolean pressingPlayer, grabbing;
     private long pressedAt;
@@ -152,10 +155,27 @@ public final class MainMenu extends MenuScreen {
     public void tick() {
         if (ping != null) ping.tick();
         if (pressingPlayer && !grabbing && System.currentTimeMillis() - pressedAt >= 250L) grabbing = LobbyBridge.grab(pressX, pressY);
+        String notice = SkinService.takeNotice();
+        if (notice != null) showToast(notice);
+    }
+
+    private void setPage(int next) {
+        if (next == page) return;
+        if (page == 1) wardrobe.close();
+        page = next;
+        lobbyPanel = false;
+        if (page == 1) wardrobe.open();
+    }
+
+    @Override
+    public void onFilesDrop(List<Path> files) {
+        if (page != 1) setPage(1);
+        wardrobe.drop(files);
     }
 
     @Override
     public void removed() {
+        if (page == 1) wardrobe.close();
         if (ping != null) ping.stop();
         for (LevelSummary s : worlds) Textures.release("world:" + s.getLevelId());
     }
@@ -214,13 +234,19 @@ public final class MainMenu extends MenuScreen {
             }
         }
 
-        drawPlayer(g);
-        drawSplash(g);
-        drawTopBar();
-        drawAnnouncement();
-        drawLeft();
-        if (lobbyPanel && lobby()) drawLobbyPanel();
-        else drawPlayCard();
+        if (page == 1) {
+            // the Wardrobe: the camera is close on your player, so no name tag or splash over it
+            drawTopBar();
+            wardrobe.draw();
+        } else {
+            drawPlayer(g);
+            drawSplash(g);
+            drawTopBar();
+            drawAnnouncement();
+            drawLeft();
+            if (lobbyPanel && lobby()) drawLobbyPanel();
+            else drawPlayCard();
+        }
         drawFooter();
         if (socialOpen) drawSocial();
         endFrame(g);
@@ -357,7 +383,7 @@ public final class MainMenu extends MenuScreen {
         for (int i = 0; i < TABS.length; i++) {
             String tab = TABS[i];
             float tw = textW(Face.MEDIUM, tab, size);
-            boolean active = i == 0;
+            boolean active = i == page;
             boolean over = inside(x - 6f, y - 2f, x + tw + 6f, y + 20f);
             float hv = anim("tab" + i, over);
             int color = active ? TEXT : mix(TEXT_2, TEXT, hv);
@@ -402,7 +428,8 @@ public final class MainMenu extends MenuScreen {
 
     private void openTab(int index) {
         switch (index) {
-            case 0 -> { }
+            case 0 -> setPage(0);
+            case 1 -> setPage(1);
             case 4 -> {
                 openFolder(minecraft.gameDirectory.toPath().resolve("screenshots"));
                 showToast("Opened your screenshots folder. The Screenshots tab is coming soon.");
@@ -614,6 +641,7 @@ public final class MainMenu extends MenuScreen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         float y = (float) mouseY / u;
+        if (page == 1 && wardrobe.scroll(mouseY, scrollY)) return true;
         if (lobbyPanel && y >= sceneListY0 && y < sceneListY1) {
             sceneScroll -= (float) scrollY;
             return true;
@@ -1005,6 +1033,11 @@ public final class MainMenu extends MenuScreen {
                 return true;
             }
             return super.keyPressed(event);
+        }
+        if (page == 1 && key == GLFW.GLFW_KEY_ESCAPE) {
+            // Esc steps back inside the Wardrobe, then back to Play
+            if (!wardrobe.back()) setPage(0);
+            return true;
         }
         if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
             socialOpen = true;

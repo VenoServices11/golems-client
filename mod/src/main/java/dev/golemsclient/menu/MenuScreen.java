@@ -78,8 +78,7 @@ abstract class MenuScreen extends net.minecraft.client.gui.screens.Screen {
 
     /** Your skin (loads in the background; the default skin until then). */
     protected Supplier<PlayerSkin> skin() {
-        if (skin == null) skin = minecraft.getSkinManager().createLookup(minecraft.getGameProfile(), false);
-        return skin;
+        return AccountSkin.lookup();
     }
 
     /** True while a panel covers the screen (no tooltips then). */
