@@ -38,6 +38,10 @@ object LobbyBridge {
     @JvmStatic
     fun showing(): Boolean = LobbyScene.showing()
 
+    /** The lobby is showing (in the menu, or while its scene is being drawn or ticked). */
+    @JvmStatic
+    fun inLobby(): Boolean = LobbyScene.terrainActive() || LobbyScene.showing()
+
     /** The scene's opening (the run-in) is still playing. */
     @JvmStatic
     fun introPlaying(): Boolean = LobbyScene.introPlaying()

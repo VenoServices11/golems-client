@@ -6,6 +6,7 @@
     "ConnectScreenMixin",
     "LoadingOverlayAccessor",
     "LoadingOverlayMixin",
+    "LobbySoundsMixin",
     "MenuFramerateMixin",
     "MinecraftTitleMixin",
     "SplashRendererAccessor",

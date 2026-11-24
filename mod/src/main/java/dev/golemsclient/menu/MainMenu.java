@@ -361,12 +361,8 @@ public final class MainMenu extends MenuScreen {
     private void drawSplash(GuiGraphics g) {
         if (minecraft.options.hideSplashTexts().get()) return;
         float[] b = playerBox();
-        if (lobby()) {
-            LobbyBridge.Tag tag = localTag();
-            if (tag == null) return;
-            splash.draw(g, (tag.x / u + 100f) * u, (tag.y / u + 14f) * u, u, fade);
-            return;
-        }
+        // no splash over the lobby
+        if (lobby()) return;
         splash.draw(g, (b[2] + (b[2] - b[0]) * 0.62f) * u, (b[1] + (b[3] - b[1]) * 0.02f) * u, u, fade);
     }
 
