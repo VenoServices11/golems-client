@@ -39,8 +39,8 @@ loom {
         client {
             if (project.hasProperty('devshots')) {
                 vmArg "-Dgolemsclient.devshots=true"
+                vmArg "-Dorg.lwjgl.system.allocator=system"
                 vmArg "-Dorg.lwjgl.util.Debug=true"
-                vmArg "-Dorg.lwjgl.util.DebugAllocator=true"
                 programArgs "--width", "1600", "--height", "900"
             }
         }

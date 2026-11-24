@@ -51,6 +51,7 @@ public final class Textures {
         if (d == null) {
             if (FAILED.contains(path)) return null;
             d = decodeResource(path);
+            if (dev.golemsclient.DevShots.ON) GolemsClient.LOGGER.info("[DevShots] picture {} -> {}", path, d == null ? "null" : d.w() + "x" + d.h());
             if (d == null) {
                 FAILED.add(path);
                 return null;
@@ -196,6 +197,7 @@ public final class Textures {
             IntBuffer c = stack.mallocInt(1);
             if (!STBImage.stbi_info_from_memory(file, w, h, c) || w.get(0) <= 0 || h.get(0) <= 0 || w.get(0) > 4096
                     || h.get(0) > 4096) {
+                GolemsClient.LOGGER.warn("Couldn't read a picture ({} bytes): {}", bytes.length, STBImage.stbi_failure_reason());
                 return null;
             }
             ByteBuffer pixels = STBImage.stbi_load_from_memory(file, w, h, c, 4);
@@ -208,6 +210,7 @@ public final class Textures {
                 STBImage.stbi_image_free(pixels);
             }
         } catch (Exception | LinkageError e) {
+            GolemsClient.LOGGER.warn("Couldn't read a picture", e);
             return null;
         } finally {
             MemoryUtil.memFree(file);
