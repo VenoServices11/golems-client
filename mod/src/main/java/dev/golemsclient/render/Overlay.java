@@ -52,6 +52,9 @@ public final class Overlay {
     private static final ImGuiImplGl3 GL3_IMPL = new ImGuiImplGl3();
 
     private static boolean ready;
+    /** Our own ImGui context, so other mods that use ImGui (Golem's Utils...) keep theirs. */
+    private static imgui.internal.ImGuiContext context;
+    private static boolean firstFrameLogged;
     private static boolean failed;
     private static int failures;
 
@@ -148,8 +151,11 @@ public final class Overlay {
             return;
         }
         int previousFbo = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
+        imgui.internal.ImGuiContext previousContext = null;
         try {
+            previousContext = ImGui.getCurrentContext();
             if (!ready) init();
+            ImGui.setCurrentContext(context);
             Minecraft mc = Minecraft.getInstance();
             float gw = mc.getWindow().getGuiScaledWidth();
             float gh = mc.getWindow().getGuiScaledHeight();
@@ -171,6 +177,11 @@ public final class Overlay {
             ImGui.render();
             GL3_IMPL.renderDrawData(ImGui.getDrawData());
             failures = 0;
+            if (!firstFrameLogged) {
+                firstFrameLogged = true;
+                GolemsClient.LOGGER.info("Overlay drew its first frame ({} things, window {}x{})", OPS.size(),
+                        mc.getWindow().getWidth(), mc.getWindow().getHeight());
+            }
         } catch (Throwable t) {
             if (++failures >= 3) {
                 failed = true;
@@ -182,6 +193,12 @@ public final class Overlay {
         } finally {
             OPS.clear();
             Textures.releasePending();
+            try {
+                if (previousContext != null && previousContext.ptr != 0 && context != null && previousContext.ptr != context.ptr) {
+                    ImGui.setCurrentContext(previousContext);
+                }
+            } catch (Throwable ignored) {
+            }
             try {
                 GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
             } catch (Throwable ignored) {
@@ -241,7 +258,8 @@ public final class Overlay {
 
     private static void init() {
         long window = GLFW.glfwGetCurrentContext();
-        ImGui.createContext();
+        context = ImGui.createContext();
+        ImGui.setCurrentContext(context);
         // ImGui's own checks are logged instead of closing the game (imgui-java's default)
         ImGui.setAssertCallback(new imgui.assertion.ImAssertCallback() {
             private int logged;
@@ -280,9 +298,10 @@ public final class Overlay {
         } catch (Throwable ignored) {
         }
         try {
-            ImGui.destroyContext();
+            if (context != null) ImGui.destroyContext(context);
         } catch (Throwable ignored) {
         }
+        context = null;
         Textures.forget();
         Fonts.forget();
         ready = false;
