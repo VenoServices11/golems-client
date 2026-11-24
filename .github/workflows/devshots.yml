@@ -35,6 +35,7 @@ jobs:
         if: always()
         run: |
           ls -la run/devshots || true
+          for f in run/hs_err*.log; do [ -f "$f" ] && sed -n '1,80p' "$f" && grep -E "^(j|J|C|V)  " "$f" | head -60; done || true
           grep -iE "mixin|exception|error|devshots|crash|golem" run/logs/latest.log | head -150 || true
       - name: Publish
         if: always()
@@ -46,4 +47,5 @@ jobs:
           for a in $(gh release view devshots --json assets --jq '.assets[].name'); do gh release delete-asset devshots "$a" -y; done
           cp run/logs/latest.log run/devshots/latest.log 2>/dev/null || true
           ls run/crash-reports/*.txt >/dev/null 2>&1 && cp run/crash-reports/*.txt run/devshots/ || true
+          cp run/hs_err*.log run/devshots/ 2>/dev/null || true
           gh release upload devshots run/devshots/* --clobber || true
