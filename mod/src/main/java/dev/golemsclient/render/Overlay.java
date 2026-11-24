@@ -72,6 +72,7 @@ public final class Overlay {
 
     private static final boolean NO_TEXT = Boolean.getBoolean("golemsclient.debug.noText");
     private static final boolean NO_PICTURES = Boolean.getBoolean("golemsclient.debug.noPictures");
+    private static final boolean NO_SHAPES = Boolean.getBoolean("golemsclient.debug.noShapes");
 
     public static void text(Face face, String s, float x, float y, float size, int argb, Align align) {
         if (NO_TEXT) return;
@@ -129,6 +130,7 @@ public final class Overlay {
 
     /** A filled rectangle with rounded corners (radius in GUI pixels; 0 for square). */
     public static void rect(float x0, float y0, float x1, float y1, float radius, int argb) {
+        if (NO_SHAPES) return;
         if (g == null || (argb >>> 24) == 0 || x1 <= x0 || y1 <= y0) return;
         int X0 = Math.round(x0 * scale), Y0 = Math.round(y0 * scale), X1 = Math.round(x1 * scale), Y1 = Math.round(y1 * scale);
         if (X1 <= X0 || Y1 <= Y0) return;
@@ -152,6 +154,7 @@ public final class Overlay {
 
     /** A rounded rectangle's border; thickness in GUI pixels (at least one real pixel). */
     public static void outline(float x0, float y0, float x1, float y1, float radius, int argb, float thickness) {
+        if (NO_SHAPES) return;
         if (g == null || (argb >>> 24) == 0 || x1 <= x0 || y1 <= y0) return;
         int X0 = Math.round(x0 * scale), Y0 = Math.round(y0 * scale), X1 = Math.round(x1 * scale), Y1 = Math.round(y1 * scale);
         int t = Math.max(1, Math.round(thickness * scale));
@@ -188,6 +191,7 @@ public final class Overlay {
     }
 
     private static void disc(float cx, float cy, float r, int argb, float thickness) {
+        if (NO_SHAPES) return;
         if (g == null || (argb >>> 24) == 0 || r <= 0f) return;
         int R = Math.max(1, Math.round(r * scale));
         int CX = Math.round(cx * scale), CY = Math.round(cy * scale);

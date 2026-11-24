@@ -43,6 +43,7 @@ loom {
                 vmArg "-Dorg.lwjgl.util.Debug=true"
                 if (project.hasProperty('noText')) vmArg "-Dgolemsclient.debug.noText=true"
                 if (project.hasProperty('noPictures')) vmArg "-Dgolemsclient.debug.noPictures=true"
+                if (project.hasProperty('noShapes')) vmArg "-Dgolemsclient.debug.noShapes=true"
                 programArgs "--width", "1600", "--height", "900"
             }
         }
