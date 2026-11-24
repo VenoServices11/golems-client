@@ -183,23 +183,28 @@ public final class SceneMaker {
 
     private static void make(Minecraft mc, Spec spec) throws Exception {
         Level level = mc.level;
-        BlockPos target = spec.cave() ? caveSpot(level, found) : groundSpot(level, found);
+        BlockPos near = found;
+        if (spec.structure() != null) {
+            BlockPos bell = findBlock(level, found, Blocks.BELL, 48);
+            if (bell != null) near = bell;
+        }
+        BlockPos target = spec.cave() ? caveSpot(level, near) : groundSpot(level, near, spec.biome());
         if (target == null) throw new IllegalStateException("no spot to stand on near " + found);
         float bestYaw = 0f, bestPitch = 0f;
         Vec3 bestCam = null;
         double bestScore = -1e9;
         Vec3 aim = new Vec3(target.getX() + 0.5, target.getY() + 1.0, target.getZ() + 0.5);
-        float[] ds = spec.cave() ? new float[] {6f, 7.5f, 9f} : new float[] {10f, 12f, 14f};
-        float[] hs = spec.cave() ? new float[] {1.5f, 2.5f} : new float[] {4.5f, 6.5f};
+        float[] ds = spec.cave() ? new float[] {4.5f, 6f, 7.5f} : new float[] {10f, 12f, 14f};
+        float[] hs = spec.cave() ? new float[] {0.8f, 1.6f} : new float[] {4.5f, 6.5f};
         for (int i = 0; i < 24; i++) {
             float yaw = i * 15f;
             double fx = -Math.sin(Math.toRadians(yaw)), fz = Math.cos(Math.toRadians(yaw));
             for (float d : ds) {
                 for (float h : hs) {
                     Vec3 cam = aim.add(-fx * d, h, -fz * d);
-                    if (solid(level, BlockPos.containing(cam)) || solid(level, BlockPos.containing(cam).above())
-                            || solid(level, BlockPos.containing(cam).below())) continue;
-                    if (!clear(level, cam, aim) || !clear(level, cam, aim.add(0, 0.9, 0))) continue;
+                    if (solid(level, BlockPos.containing(cam)) || (!spec.cave() && (solid(level, BlockPos.containing(cam).above())
+                            || solid(level, BlockPos.containing(cam).below())))) continue;
+                    if (!clear(level, cam, aim) || !spec.cave() && !clear(level, cam, aim.add(0, 0.9, 0))) continue;
                     float pitch = (float) Math.toDegrees(Math.atan2(h, d));
                     double score = view(level, cam, yaw, pitch) - Math.abs(d - ds[1]) * 2;
                     if (score > bestScore) {
@@ -295,7 +300,28 @@ public final class SceneMaker {
                 && level.getBlockState(p).getFluidState().isEmpty();
     }
 
-    private static BlockPos groundSpot(Level level, BlockPos near) {
+    private static BlockPos findBlock(Level level, BlockPos near, net.minecraft.world.level.block.Block block, int r) {
+        BlockPos best = null;
+        double bestD = Double.MAX_VALUE;
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dz = -r; dz <= r; dz++) {
+                int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING, near.getX() + dx, near.getZ() + dz);
+                for (int dy = -6; dy <= 2; dy++) {
+                    BlockPos p = new BlockPos(near.getX() + dx, top + dy, near.getZ() + dz);
+                    if (level.getBlockState(p).is(block)) {
+                        double d = dx * dx + dz * dz;
+                        if (d < bestD) {
+                            bestD = d;
+                            best = p;
+                        }
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    private static BlockPos groundSpot(Level level, BlockPos near, ResourceKey<Biome> biome) {
         BlockPos best = null;
         double bestScore = -1e9;
         for (int dx = -28; dx <= 28; dx++) {
@@ -304,6 +330,18 @@ public final class SceneMaker {
                 int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
                 BlockPos p = new BlockPos(x, y, z);
                 if (!standable(level, p)) continue;
+                if (biome != null && !level.getBiome(p).is(biome)) continue;
+                if (level.getBlockState(p.below()).is(Blocks.SNOW_BLOCK) || level.getBlockState(p).is(Blocks.SNOW) && biome != null) continue;
+                // open sky: no tree canopy over the spot or right around it
+                int canopy = 0;
+                for (int a = -3; a <= 3; a++) {
+                    for (int b = -3; b <= 3; b++) {
+                        int withLeaves = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x + a, z + b);
+                        int without = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x + a, z + b);
+                        if (withLeaves > without + 1) canopy++;
+                    }
+                }
+                if (canopy > 6) continue;
                 int flat = 0;
                 for (int a = -4; a <= 4; a++) {
                     for (int b = -4; b <= 4; b++) {
@@ -312,7 +350,7 @@ public final class SceneMaker {
                     }
                 }
                 boolean path = level.getBlockState(p.below()).is(Blocks.DIRT_PATH);
-                double score = flat * 2 + (path ? 8 : 0) - Math.sqrt(dx * dx + dz * dz) * 0.5;
+                double score = flat * 2 + (path ? 8 : 0) - canopy * 3 - Math.sqrt(dx * dx + dz * dz) * 0.5;
                 if (score > bestScore) {
                     bestScore = score;
                     best = p;
@@ -331,9 +369,10 @@ public final class SceneMaker {
                     BlockPos p = near.offset(dx, dy, dz);
                     if (!standable(level, p) || solid(level, p.above(2))) continue;
                     int open = 0;
-                    for (int a = -4; a <= 4; a++) {
-                        for (int b = -4; b <= 4; b++) {
+                    for (int a = -5; a <= 5; a++) {
+                        for (int b = -5; b <= 5; b++) {
                             if (!solid(level, p.offset(a, 1, b))) open++;
+                            if (!solid(level, p.offset(a, 3, b))) open++;
                         }
                     }
                     double score = open - Math.sqrt(dx * dx + dy * dy + dz * dz) * 0.3;
