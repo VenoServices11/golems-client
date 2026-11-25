@@ -638,7 +638,10 @@ public final class GolemsMenu extends MenuScreen {
     private void keyRow(KeyMapping k, KeyMapping[] all, float x0, float y, float x1) {
         float h = 26f, cy = y + h / 2f;
         boolean clash = false;
-        if (!k.isUnbound()) for (KeyMapping o : all) if (o != k && k.same(o)) clash = true;
+        // F3 combos (F3+A, F3+G...) are only pressed with F3 held, so they don't clash with anything
+        if (!k.isUnbound() && k.getCategory() != KeyMapping.Category.DEBUG) {
+            for (KeyMapping o : all) if (o != k && o.getCategory() != KeyMapping.Category.DEBUG && k.same(o)) clash = true;
+        }
         text(Face.SEMIBOLD, fit(Face.SEMIBOLD, Component.translatable(k.getName()).getString(), 7.5f, x1 - x0 - 200f), x0, cy - 7.5f * 0.6f, 7.5f, TEXT, Align.LEFT);
         rect(x0, y + h - 0.5f, x1, y + h, 0f, 0x0FFFFFFF);
         boolean visible = cy > listY0 + 4f && cy < listY1 - 4f;
