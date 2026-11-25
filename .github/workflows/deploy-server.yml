@@ -46,3 +46,5 @@ jobs:
           sleep 5
           curl -sS -m 30 https://c418-presence.c418client.workers.dev/launcher/announcement; echo
           echo "Mojang from the server:"; curl -sS -m 30 https://c418-presence.c418client.workers.dev/health/mojang; echo
+          echo "Friends (should ask to sign in again):"
+          curl -sS -m 30 -X POST -H "content-type: application/json" -d '{"token":"0000000000000000000000000000000000000000000000000000000000000000"}' https://c418-presence.c418client.workers.dev/friends/state; echo
