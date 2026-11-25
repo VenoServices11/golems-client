@@ -38,6 +38,7 @@ import java.util.List;
  * camera glides round to film your real player in the world, OneClient's PauseStage).
  */
 public final class PauseMenu extends MenuScreen {
+    private final SocialPanel social = new SocialPanel(this);
     private static final String[] TABS = {"Game", "Wardrobe"};
     private static final float ROW = 22f, TIGHT_ROW = 19f;
 
@@ -127,6 +128,7 @@ public final class PauseMenu extends MenuScreen {
         }
         drawTopBar();
         if (customizeOpen) drawCustomize();
+        social.draw();
         endFrame(g);
     }
 
@@ -256,6 +258,7 @@ public final class PauseMenu extends MenuScreen {
                     () -> minecraft.setScreen(new AdvancementsScreen(minecraft.player.connection.getAdvancements(), this)), false));
             out.add(new Row("stats", label("gui.stats"), () -> minecraft.setScreen(new StatsScreen(this, minecraft.player.getStats())), false));
         }
+        out.add(new Row("users", "Friends", social::show, false));
         out.add(new Row("cube", "Mods", this::openMods, false));
         out.add(new Row(null, "More", () -> moreOpen = !moreOpen, true));
         return out;
@@ -636,6 +639,7 @@ public final class PauseMenu extends MenuScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (social.scroll(mouseY, scrollY)) return true;
         if (page == 1 && wardrobe.scroll(mouseY, scrollY)) return true;
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
@@ -647,7 +651,17 @@ public final class PauseMenu extends MenuScreen {
     }
 
     @Override
+    public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+        if (social.type(event.codepoint())) return true;
+        return super.charTyped(event);
+    }
+
+    @Override
     public boolean keyPressed(KeyEvent event) {
+        if (social.open()) {
+            social.key(event.key());
+            return true;
+        }
         if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
             if (customizeOpen) {
                 customizeOpen = false;
@@ -673,6 +687,6 @@ public final class PauseMenu extends MenuScreen {
 
     @Override
     protected boolean modalOpen() {
-        return moreOpen || customizeOpen;
+        return moreOpen || customizeOpen || social.open();
     }
 }

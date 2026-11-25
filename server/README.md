@@ -11,6 +11,13 @@ A small server on Cloudflare Workers (free plan) with a D1 database. It does two
   isn't updated any more, but its users still use this server, so these parts stay. That's also why the server
   keeps its old address (`c418-presence...`): the mod has it built in.
 
+- **Golem's Client friends** (the launcher and the game): friend requests, friends lists, blocking, and what friends
+  are doing (in the launcher, in game, and which server, unless they turned that off). Mojang rejects requests from
+  Cloudflare, so accounts can't be checked with Mojang: the first time an account signs in to friends, its computer
+  gets a secret key (saved in `~/.golemsclient/friends`), and later sign-ins need it. If someone moves to a new
+  computer, reset their account with `POST /admin/friends/reset { key, player }`; their friends stay. All of it is in
+  `src/friends.js`.
+
 **What it stores:** Minecraft UUIDs and names, when each one first and last checked in, what a launcher user is
 playing, short-lived login tokens, cape choices, owner-made cape images, announcements and synced mod settings.
 No IP addresses, emails or login tokens from Microsoft or Mojang. (Mojang blocks requests from Cloudflare, so
@@ -61,4 +68,13 @@ npx wrangler secret put ADMIN_KEY
 | `POST /launcher/leave` | `{ uuid }` | `{ ok }` |
 | `POST /launcher/stats` | `{ key }` | `{ total, in_launcher, playing, new_today, active_today, users }` |
 | `GET /launcher/dashboard` | | the owner's Golem's Client stats page |
+| `POST /friends/login` | `{ uuid, name, key? }` | `{ token, uuid, name, key? }` (key only the first time) |
+| `POST /friends/state` | `{ token, presence? }` | `{ me, friends, incoming, outgoing, blocked }` |
+| `POST /friends/add` | `{ token, name, uuid? }` | `{ ok, friends, name }` |
+| `POST /friends/accept`, `/decline`, `/cancel` | `{ token, id }` | `{ ok }` |
+| `POST /friends/remove`, `/block`, `/unblock` | `{ token, uuid }` | `{ ok }` |
+| `POST /friends/settings` | `{ token, shareServer }` | `{ ok }` |
+| `POST /friends/leave` | `{ token, source }` | `{ ok }` |
+| `POST /admin/friends/reset` | `{ key, player }` | `{ ok }` |
+| `GET /health/mojang` | | whether this server can reach Mojang (it can't: 403) |
 

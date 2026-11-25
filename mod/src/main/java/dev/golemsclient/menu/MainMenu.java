@@ -90,7 +90,7 @@ public final class MainMenu extends MenuScreen {
     private long pressedAt;
     private double pressX, pressY;
     private float sceneScroll;
-    private boolean socialOpen;
+    private final SocialPanel social = new SocialPanel(this);
     private boolean lobbyPanel;
     private boolean draggingVolume;
     private float volumeX0, volumeX1;
@@ -186,6 +186,7 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+        if (social.type(event.codepoint())) return true;
         if (page == 4 && screenshots.type(event.codepoint())) return true;
         return super.charTyped(event);
     }
@@ -252,7 +253,8 @@ public final class MainMenu extends MenuScreen {
         if (lobby() && !(setup.showing() && LobbyBridge.startupActive())) fade = Math.min(fade, LobbyBridge.panelAlpha());
         LobbyBridge.accent(ACCENT);
         if (dev.golemsclient.DevShots.ON) {
-            socialOpen = devSocial;
+            if (devSocial && !social.open()) social.show();
+            else if (!devSocial && social.open()) social.close();
             if (devTab >= 0) {
                 openTab(devTab);
                 devTab = -1;
@@ -294,7 +296,7 @@ public final class MainMenu extends MenuScreen {
             else drawPlayCard();
         }
         drawFooter();
-        if (socialOpen) drawSocial();
+        social.draw();
         endFrame(g);
         // OneClient's startup: the logo over the loading screen flies into the top bar as the scene appears
         LobbyBridge.startupFrame(g);
@@ -302,7 +304,7 @@ public final class MainMenu extends MenuScreen {
 
     @Override
     protected boolean modalOpen() {
-        return socialOpen;
+        return social.open();
     }
 
     /** The first-launch setup was finished: the menu fades in. */
@@ -342,7 +344,7 @@ public final class MainMenu extends MenuScreen {
             for (LobbyBridge.Tag tag : LobbyBridge.tags(window.getGuiScaledWidth(), window.getGuiScaledHeight())) {
                 tagAt(tag.name, tag.x / u, tag.y / u, tag.local);
             }
-            if (!socialOpen && !grabbing && LobbyBridge.touches(mx * u / width, my * u / height)) pointer = true;
+            if (!social.open() && !grabbing && LobbyBridge.touches(mx * u / width, my * u / height)) pointer = true;
             return;
         }
         PlayerSkin s = skin().get();
@@ -351,7 +353,7 @@ public final class MainMenu extends MenuScreen {
         // look at the mouse, a little; idle sway
         float cx = (b[0] + b[2]) / 2f, headY = b[1] + (b[3] - b[1]) * 0.12f;
         float t = (System.currentTimeMillis() % 100000L) / 1000f;
-        if (!dragging && !socialOpen) {
+        if (!dragging && !social.open()) {
             float lookYaw = clamp((mx - cx) / w * 70f, -35f, 35f);
             float lookPitch = clamp((my - headY) / H * 45f, -25f, 25f);
             model.head.yRot = approach(model.head.yRot, (float) Math.toRadians(lookYaw), 8f);
@@ -548,8 +550,16 @@ public final class MainMenu extends MenuScreen {
         float kw = textW(Face.MONO, "ENTER", 5.5f) + 8f;
         rect(kx, sy0 + 5.5f, kx + kw, sy1 - 5.5f, 3f, 0x26FFFFFF);
         text(Face.MONO, "ENTER", kx + kw / 2f, sy0 + 11f - 5.5f * 0.62f, 5.5f, TEXT, Align.CENTER);
-        text(Face.REGULAR, "to open Social", kx + kw + 4f, sy0 + 11f - 7f * 0.6f, 7f, TEXT_2, Align.LEFT);
-        hit(x0, sy0, x1, sy1, () -> socialOpen = true);
+        text(Face.REGULAR, "for friends", kx + kw + 4f, sy0 + 11f - 7f * 0.6f, 7f, TEXT_2, Align.LEFT);
+        dev.golemsclient.friends.Friends.State fs = dev.golemsclient.friends.Friends.state();
+        if (fs != null) {
+            int asks = fs.incoming().size(), on = fs.online();
+            String what = asks > 0 ? asks + (asks == 1 ? " request" : " requests") : on + " online";
+            float ww = textW(Face.MEDIUM, what, 6.5f);
+            text(Face.MEDIUM, what, x1 - 10f, sy0 + 11f - 6.5f * 0.6f, 6.5f, asks > 0 ? ACCENT : TEXT_2, Align.RIGHT);
+            if (asks == 0 && on > 0) rect(x1 - 16f - ww, sy0 + 9f, x1 - 12f - ww, sy0 + 13f, 2f, LIVE);
+        }
+        hit(x0, sy0, x1, sy1, social::show);
 
         // FPS and frame time
         float fy1 = sy0 - 6f, fy0 = fy1 - 22f;
@@ -689,6 +699,7 @@ public final class MainMenu extends MenuScreen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         float y = (float) mouseY / u;
+        if (social.scroll(mouseY, scrollY)) return true;
         if (page == 1 && wardrobe.scroll(mouseY, scrollY)) return true;
         if (page == 3 && news.scroll(mouseY, scrollY)) return true;
         if (page == 4 && screenshots.scroll(mouseY, scrollY)) return true;
@@ -970,37 +981,6 @@ public final class MainMenu extends MenuScreen {
         hit(w - PAD - rw, H - 17f, w - PAD, H - 6f, () -> minecraft.setScreen(new CreditsAndAttributionScreen(this)));
     }
 
-    private void drawSocial() {
-        float a = anim("socialPanel", socialOpen);
-        hits.clear(); // the panel takes all clicks
-        rect(0f, 0f, w, H, 0f, alpha(0x99000000, a));
-        float pw = 260f, ph = 120f, x0 = w / 2f - pw / 2f, y0 = H / 2f - ph / 2f + (1f - a) * 8f;
-        rect(x0, y0, x0 + pw, y0 + ph, 8f, alpha(0xF5141417, a));
-        outline(x0, y0, x0 + pw, y0 + ph, 8f, alpha(LINE, a));
-        text(Face.BOLD, "Social", x0 + 16f, y0 + 14f, 11f, alpha(TEXT, a), Align.LEFT);
-        text(Face.REGULAR, "Friends, chat and sharing are coming in a later update.", x0 + 16f, y0 + 34f, 7f, alpha(TEXT_2, a), Align.LEFT);
-        text(Face.REGULAR, "Until then, come hang out:", x0 + 16f, y0 + 46f, 7f, alpha(TEXT_2, a), Align.LEFT);
-        float bx = x0 + 16f, by0 = y0 + 66f, by1 = y0 + 88f;
-        bx = linkButton("discord", "Discord", bx, by0, by1, a, () -> Util.getPlatform().openUri(DISCORD));
-        linkButton("tiktok", "@holygrajl", bx + 6f, by0, by1, a, () -> Util.getPlatform().openUri(TIKTOK));
-        text(Face.REGULAR, "Esc or click outside to close", x0 + 16f, y0 + ph - 18f, 6f, alpha(TEXT_3, a), Align.LEFT);
-        hits.add(0, new Hit(x0, y0, x0 + pw, y0 + ph, () -> { }));
-        hits.add(new Hit(0f, 0f, w, H, () -> socialOpen = false));
-    }
-
-    private float linkButton(String icon, String label, float x0, float y0, float y1, float a, Runnable action) {
-        float lw = textW(Face.MEDIUM, label, 7.5f) + 34f;
-        boolean over = inside(x0, y0, x0 + lw, y1);
-        float hv = anim("link:" + icon, over);
-        rect(x0, y0, x0 + lw, y1, 5f, alpha(mix(0x14FFFFFF, 0x2EFFFFFF, hv), a));
-        Overlay.icon(icon, (x0 + 9f) * u, ((y0 + y1) / 2f - 5f) * u, 10f * u, c(alpha(TEXT, a)));
-        text(Face.MEDIUM, label, x0 + 24f, (y0 + y1) / 2f - 7.5f * 0.6f, 7.5f, alpha(TEXT, a), Align.LEFT);
-        hits.add(0, new Hit(x0, y0, x0 + lw, y1, action));
-        if (over) pointer = true;
-        return x0 + lw;
-    }
-
-
     // ------------------------------------------------------------------ input
 
     @Override
@@ -1012,7 +992,7 @@ public final class MainMenu extends MenuScreen {
         if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return super.mouseClicked(event, doubleClick);
         if (lobby()) {
             double sx = event.x() / width, sy = event.y() / height;
-            if (!socialOpen && LobbyBridge.touches(sx, sy)) {
+            if (!social.open() && LobbyBridge.touches(sx, sy)) {
                 pressingPlayer = true;
                 pressedAt = System.currentTimeMillis();
                 pressX = sx;
@@ -1023,7 +1003,7 @@ public final class MainMenu extends MenuScreen {
         }
         float x = (float) event.x() / u, y = (float) event.y() / u;
         float[] b = playerBox();
-        if (!socialOpen && x >= b[0] && x < b[2] && y >= b[1] && y < b[3]) {
+        if (!social.open() && x >= b[0] && x < b[2] && y >= b[1] && y < b[3]) {
             dragging = true;
             return true;
         }
@@ -1088,15 +1068,12 @@ public final class MainMenu extends MenuScreen {
         if (page == 4 && screenshots.key(key)) return true;
         if (lobby()) {
             // OneClient's little key reactions, and any key skips the opening
-            LobbyBridge.key(key, !socialOpen && !lobbyPanel);
+            LobbyBridge.key(key, !social.open() && !lobbyPanel);
             if (LobbyBridge.skipIntro()) return true;
         }
-        if (socialOpen) {
-            if (key == GLFW.GLFW_KEY_ESCAPE || key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
-                socialOpen = false;
-                return true;
-            }
-            return super.keyPressed(event);
+        if (social.open()) {
+            social.key(key);
+            return true;
         }
         if (page == 1 && key == GLFW.GLFW_KEY_ESCAPE) {
             // Esc steps back inside the Wardrobe, then back to Play
@@ -1108,7 +1085,7 @@ public final class MainMenu extends MenuScreen {
             return true;
         }
         if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
-            socialOpen = true;
+            social.show();
             return true;
         }
         return super.keyPressed(event);

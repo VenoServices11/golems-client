@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import net.minecraft.client.Minecraft
 import net.minecraft.client.resources.DefaultPlayerSkin
 import net.minecraft.world.entity.player.PlayerSkin
+import dev.golemsclient.friends.Friends
 import dev.golemsclient.oc.client.PolyPlusClient
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -34,7 +35,7 @@ object LobbyFriends {
     private var ticks = 0
 
     fun refresh() {
-        // Golem's Client: friends in the lobby come later, from Golem's Client's own server
+        // Golem's Client: friends come from Golem's Client's own server (dev.golemsclient.friends.Friends polls it)
     }
 
     fun tick() {
@@ -43,7 +44,16 @@ object LobbyFriends {
         refresh()
     }
 
-    fun cast(): LobbyCast = EMPTY
+    /**
+     * Golem's Client: your online friends stand in the lobby. Friends in the launcher are there in person; friends
+     * playing somewhere are shown as a projection with where they are ("Playing on donutsmp.net").
+     */
+    fun cast(): LobbyCast {
+        val state = Friends.state() ?: return EMPTY
+        val online = state.friends().filter { it.online() && !it.name().isNullOrEmpty() }
+        if (online.isEmpty()) return EMPTY
+        return LobbyCast(emptyList(), online.map { LobbyFriend(it.uuid(), it.name()!!, if (it.inGame()) it.where() else null) })
+    }
 
     fun skin(friend: LobbyFriend): PlayerSkin {
         val profile = profiles[friend.uuid]

@@ -54,3 +54,13 @@ CREATE TABLE IF NOT EXISTS configs (uuid TEXT PRIMARY KEY, data TEXT NOT NULL, u
 -- Golem's Client (the launcher): everyone who used it, and who has it open right now
 CREATE TABLE IF NOT EXISTS launcher_users (uuid TEXT PRIMARY KEY, name TEXT, version TEXT, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS launcher_online (uuid TEXT PRIMARY KEY, seen INTEGER NOT NULL, state TEXT NOT NULL, instance TEXT, mc TEXT);
+
+-- Golem's Client friends (src/friends.js)
+CREATE TABLE IF NOT EXISTS f_accounts (uuid TEXT PRIMARY KEY, name TEXT, key_hash TEXT NOT NULL, share_server INTEGER NOT NULL DEFAULT 1, made INTEGER NOT NULL, last_seen INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS f_accounts_name ON f_accounts (name COLLATE NOCASE);
+CREATE TABLE IF NOT EXISTS f_sessions (token TEXT PRIMARY KEY, uuid TEXT NOT NULL, expires INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS f_friends (uuid TEXT NOT NULL, friend TEXT NOT NULL, since INTEGER NOT NULL, PRIMARY KEY (uuid, friend));
+CREATE TABLE IF NOT EXISTS f_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, sender TEXT NOT NULL, receiver TEXT NOT NULL, at INTEGER NOT NULL, UNIQUE (sender, receiver));
+CREATE INDEX IF NOT EXISTS f_requests_receiver ON f_requests (receiver);
+CREATE TABLE IF NOT EXISTS f_blocks (uuid TEXT NOT NULL, blocked TEXT NOT NULL, since INTEGER NOT NULL, PRIMARY KEY (uuid, blocked));
+CREATE TABLE IF NOT EXISTS f_presence (uuid TEXT NOT NULL, source TEXT NOT NULL, seen INTEGER NOT NULL, server TEXT, mc TEXT, PRIMARY KEY (uuid, source));

@@ -35,6 +35,14 @@ public final class GolemsClient implements ClientModInitializer {
         dev.golemsclient.stats.PlaySessions.register();
         // the G badge on Golem's Client players' nametags and in the tab list
         dev.golemsclient.badge.Badges.register();
+        dev.golemsclient.friends.Friends.register();
+        dev.golemsclient.friends.Friends.onNotice(message -> net.minecraft.client.Minecraft.getInstance().execute(() -> {
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+            if (mc.screen instanceof dev.golemsclient.menu.MenuScreen menu) menu.notice(message);
+            else net.minecraft.client.gui.components.toasts.SystemToast.add(mc.getToastManager(),
+                    net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+                    net.minecraft.network.chat.Component.literal("Golem's Client"), net.minecraft.network.chat.Component.literal(message));
+        }));
         // where you are, for the launcher's Discord status
         DiscordStatus.register();
         // OneConfig's menu in Golem's Client's colours

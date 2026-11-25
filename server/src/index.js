@@ -46,8 +46,12 @@
  *   POST /client/ping   { uuid }                  -> { ok }   every two minutes while the game is open
  *   POST /client/lookup { uuids: [..] (max 300) } -> { users, owners }   who of them is playing with Golem's Client
  *
+ * Golem's Client friends (launcher and game): see friends.js, POST /friends/...
+ *
  * The owner key is a secret:  npx wrangler secret put ADMIN_KEY
  */
+
+import { friends, friendsCleanup } from "./friends.js";
 
 const ONLINE_FOR = 5 * 60;          // seconds a heartbeat keeps you "online"
 const SESSION_FOR = 24 * 60 * 60;   // seconds a login token lasts
@@ -130,6 +134,15 @@ export default {
     const now = Math.floor(Date.now() / 1000);
     const path = new URL(request.url).pathname;
     try {
+      const handled = await friends(path, env, body, now, {
+        isOwnerKey,
+        owners: async (env) => {
+          await ensureUsers(env);
+          const rows = await env.DB.prepare("SELECT uuid FROM owners").all();
+          return new Set([...OWNER_UUIDS, ...rows.results.map((r) => r.uuid)]);
+        },
+      });
+      if (handled) return handled;
       switch (path) {
         case "/auth/start": return await authStart(env, now);
         case "/auth/finish": return await authFinish(env, body, now);
@@ -172,6 +185,7 @@ export default {
       env.DB.prepare("DELETE FROM sessions WHERE expires < ?").bind(now),
       env.DB.prepare("DELETE FROM challenges WHERE expires < ?").bind(now),
     ]);
+    await friendsCleanup(env, now);
   },
 };
 

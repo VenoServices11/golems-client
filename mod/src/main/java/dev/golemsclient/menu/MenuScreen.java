@@ -29,7 +29,7 @@ import java.util.function.Supplier;
  * tooltips, toasts, your head, and the now-playing card. A subclass calls {@link #beginFrame} first in render and
  * {@link #endFrame} last, and records what can be clicked with {@link #hit}.
  */
-abstract class MenuScreen extends net.minecraft.client.gui.screens.Screen {
+public abstract class MenuScreen extends net.minecraft.client.gui.screens.Screen {
     // the launcher's Iron Dark
     protected static final int TEXT = 0xFFEDEDEF;
     protected static final int TEXT_2 = 0xFF9A9AA2;
@@ -398,6 +398,11 @@ abstract class MenuScreen extends net.minecraft.client.gui.screens.Screen {
         } catch (Exception e) {
             GolemsClient.LOGGER.warn("Couldn't open {}", dir, e);
         }
+    }
+
+    /** A short message at the top (friend requests and the like). */
+    public void notice(String message) {
+        showToast(message);
     }
 
     protected void showToast(String message) {
