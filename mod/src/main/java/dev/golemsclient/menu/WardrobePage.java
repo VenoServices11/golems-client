@@ -238,6 +238,11 @@ final class WardrobePage {
 
     private boolean capesAsked;
 
+    /** Dev screenshots only. */
+    void devCapes() {
+        show(View.CAPES);
+    }
+
     private void drawCapes(SkinService.Profile p, float x, float y, float iw, float y1) {
         List<dev.golemsclient.friends.Capes.Cape> ours = dev.golemsclient.friends.Capes.mine();
         if (!capesAsked) {

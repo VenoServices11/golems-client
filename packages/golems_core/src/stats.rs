@@ -223,6 +223,67 @@ pub async fn delete_news(state: &LauncherState, key: &str, id: &str) -> Result<(
     news_call(state, "/launcher/news/delete", serde_json::json!({ "key": key, "id": id })).await
 }
 
+/// A cape the owner can give out, and who has it
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct GiftCape {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub people: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct GiftCapes {
+    #[serde(default)]
+    capes: Vec<GiftCape>,
+}
+
+/// Gives a cape to a player (by name), or takes it back. Answers what happened
+pub async fn give_cape(state: &LauncherState, key: &str, player: &str, cape: &str, take: bool) -> Result<String, String> {
+    let response = state
+        .services
+        .requester
+        .http()
+        .post(format!("{PRESENCE_URL}/admin/capes/give"))
+        .json(&serde_json::json!({ "key": key, "player": player, "cape": cape, "take": take }))
+        .timeout(TIMEOUT)
+        .send()
+        .await
+        .map_err(|_| "Couldn't reach the server.".to_string())?;
+    let status = response.status().as_u16();
+    let body = response.json::<serde_json::Value>().await.unwrap_or_default();
+    let who = body["player"].as_str().unwrap_or(player).to_string();
+    match status {
+        200 if take => Ok(format!("Took the cape back from {who}.")),
+        200 => Ok(format!("Gave the cape to {who}. They can wear it from their Wardrobe.")),
+        404 if body["code"] == "not_found" => Err("Wrong owner key, or the server needs updating.".to_string()),
+        _ => Err(body["error"].as_str().map(str::to_string).unwrap_or_else(|| format!("The server answered with an error ({status})."))),
+    }
+}
+
+/// The capes the owner can give out, with who has them
+pub async fn gift_capes(state: &LauncherState, key: &str) -> Result<Vec<GiftCape>, String> {
+    let response = state
+        .services
+        .requester
+        .http()
+        .post(format!("{PRESENCE_URL}/admin/capes/list"))
+        .json(&serde_json::json!({ "key": key }))
+        .timeout(TIMEOUT)
+        .send()
+        .await
+        .map_err(|_| "Couldn't reach the server.".to_string())?;
+    match response.status().as_u16() {
+        200 => response
+            .json::<GiftCapes>()
+            .await
+            .map(|list| list.capes)
+            .map_err(|_| "The server sent something unexpected.".to_string()),
+        404 => Err("Wrong owner key, or the server needs updating.".to_string()),
+        code => Err(format!("The server answered with an error ({code}).")),
+    }
+}
+
 async fn news_call(state: &LauncherState, path: &str, body: serde_json::Value) -> Result<(), String> {
     let response = state
         .services

@@ -71,6 +71,7 @@ public final class DevShots {
             d.pauseStyle = "flat";
         }, 2500, null);
         step("06c_pause_wardrobe", () -> dev.golemsclient.menu.PauseMenu.devPage(1), 1500, null);
+        step("06c2_capes", dev.golemsclient.menu.PauseMenu::devCapes, 1000, null);
         // the settings (Minecraft's options, restyled like OneClient's) and its search
         step("06d_settings", () -> mc.setScreen(new net.minecraft.client.gui.screens.options.OptionsScreen(mc.screen, mc.options)), 1200, null);
         step("06e_settings_search", () -> dev.golemsclient.menu.SettingsScreen.dev(null, "chat"), 900, null);

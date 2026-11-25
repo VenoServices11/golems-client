@@ -5,8 +5,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use freya::prelude::*;
 use golems_core::stats::{
-    NewsPost, OwnerStats, StatsUser, delete_news, news_posts, owner_stats, post_announcement, post_news,
-    save_owner_key, saved_owner_key,
+    GiftCape, NewsPost, OwnerStats, StatsUser, delete_news, gift_capes, give_cape, news_posts, owner_stats,
+    post_announcement, post_news, save_owner_key, saved_owner_key,
 };
 
 use super::{section_header, settings_page};
@@ -34,6 +34,30 @@ impl Component for SettingsOwner {
         let news_status = use_state(|| None::<String>);
         let news = use_state(|| None::<Result<Vec<NewsPost>, String>>);
         let news_revision = use_state(|| 0u32);
+        let cape_player = use_state(String::new);
+        let cape_status = use_state(|| None::<String>);
+        let capes = use_state(|| None::<Result<Vec<GiftCape>, String>>);
+        let capes_revision = use_state(|| 0u32);
+
+        // the capes the owner gives out, and who has them
+        let capes_deps = (*capes_revision.read(), *has_key.read());
+        use_side_effect_with_deps(&capes_deps, move |(_, has_key)| {
+            if !*has_key {
+                return;
+            }
+            let key = key.peek().clone();
+            spawn(async move {
+                let mut capes = capes;
+                let result = crate::launcher::off_ui(async move {
+                    match crate::launcher::state() {
+                        Ok(state) => gift_capes(&state, &key).await,
+                        Err(_) => Err("The launcher is still starting.".to_string()),
+                    }
+                })
+                .await;
+                capes.set(Some(result));
+            });
+        });
 
         // the News page's posts, read again after each post or delete
         let news_deps = (*news_revision.read(), *has_key.read());
@@ -155,6 +179,71 @@ impl Component for SettingsOwner {
                             .text("Take down"),
                     ),
             ))
+            .child(section_header("Capes"))
+            .child(settings_row(
+                IconType::Brush01,
+                "Give a cape",
+                cape_status.read().clone().unwrap_or_else(|| {
+                    "Type their Minecraft name. They need to have opened Golem's Client once.".to_string()
+                }),
+                rect()
+                    .vertical()
+                    .spacing(8.)
+                    .child(
+                        TextInput::new(cape_player)
+                            .placeholder("Minecraft name")
+                            .width(Size::px(320.)),
+                    )
+                    .child(
+                        rect()
+                            .horizontal()
+                            .spacing(8.)
+                            .child(
+                                Button::new()
+                                    .primary()
+                                    .small()
+                                    .on_press(move |_| cape_gift(key, cape_player, cape_status, capes_revision, "supporter", false))
+                                    .text("Give Supporter"),
+                            )
+                            .child(
+                                Button::new()
+                                    .primary()
+                                    .small()
+                                    .on_press(move |_| cape_gift(key, cape_player, cape_status, capes_revision, "og", false))
+                                    .text("Give OG"),
+                            )
+                            .child(
+                                Button::new()
+                                    .secondary()
+                                    .small()
+                                    .on_press(move |_| cape_gift(key, cape_player, cape_status, capes_revision, "supporter", true))
+                                    .text("Take Supporter"),
+                            )
+                            .child(
+                                Button::new()
+                                    .secondary()
+                                    .small()
+                                    .on_press(move |_| cape_gift(key, cape_player, cape_status, capes_revision, "og", true))
+                                    .text("Take OG"),
+                            ),
+                    ),
+            ));
+        match capes.read().clone() {
+            None => page = page.child(note("Loading who has which cape...")),
+            Some(Err(error)) => page = page.child(note(error)),
+            Some(Ok(list)) => {
+                for cape in list {
+                    let people = if cape.people.is_empty() {
+                        "nobody yet".to_string()
+                    } else {
+                        cape.people.join(", ")
+                    };
+                    page = page.child(note(format!("{}: {}", cape.name, people)));
+                }
+            }
+        }
+
+        page = page
             .child(section_header("News"))
             .child(settings_row(
                 IconType::File02,
@@ -261,6 +350,37 @@ impl Component for SettingsOwner {
         )
         .into_element()
     }
+}
+
+/// Gives the cape to the player in the field (or takes it back), then reads who has which cape again.
+fn cape_gift(
+    key: State<String>,
+    player: State<String>,
+    mut status: State<Option<String>>,
+    mut revision: State<u32>,
+    cape: &'static str,
+    take: bool,
+) {
+    let key = key.peek().trim().to_string();
+    let name = player.peek().trim().to_string();
+    if name.is_empty() {
+        status.set(Some("Type their Minecraft name first.".to_string()));
+        return;
+    }
+    status.set(Some("Sending...".to_string()));
+    spawn(async move {
+        let result = crate::launcher::off_ui(async move {
+            match crate::launcher::state() {
+                Ok(state) => give_cape(&state, &key, &name, cape, take).await,
+                Err(_) => Err("The launcher is still starting.".to_string()),
+            }
+        })
+        .await;
+        match result {
+            Ok(message) | Err(message) => status.set(Some(message)),
+        }
+        *revision.write() += 1;
+    });
 }
 
 /// Posts the text in the banner field (or takes the banner down), then says how it went.

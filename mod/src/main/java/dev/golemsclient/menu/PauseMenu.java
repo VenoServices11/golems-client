@@ -91,6 +91,11 @@ public final class PauseMenu extends MenuScreen {
         if (net.minecraft.client.Minecraft.getInstance().screen instanceof PauseMenu p) p.setPage(index);
     }
 
+    /** Dev screenshots only: the Wardrobe's capes. */
+    public static void devCapes() {
+        if (net.minecraft.client.Minecraft.getInstance().screen instanceof PauseMenu p) p.wardrobe.devCapes();
+    }
+
     private boolean stepBack() {
         return "stepback".equals(data.pauseStyle);
     }
