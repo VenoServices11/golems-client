@@ -604,26 +604,9 @@ public final class PauseMenu extends MenuScreen {
     }
 
     /** The mods menu (OneConfig's, until Golem's Client has its own). */
+    /** Golem's Client's mod menu. */
     private void openMods() {
-        try {
-            Class<?> ui = Class.forName("org.polyfrost.oneconfig.api.ui.v1.OneConfigUI");
-            Object instance = ui.getField("INSTANCE").get(null);
-            for (java.lang.reflect.Method m : ui.getMethods()) {
-                if (m.getName().equals("open") && m.getParameterCount() == 0) {
-                    m.invoke(instance);
-                    return;
-                }
-            }
-            for (java.lang.reflect.Method m : ui.getMethods()) {
-                if (m.getName().equals("open$default") && m.getParameterCount() == 4) {
-                    m.invoke(null, instance, null, 1, null);
-                    return;
-                }
-            }
-        } catch (Throwable e) {
-            GolemsClient.LOGGER.debug("Couldn't open OneConfig: {}", e.toString());
-        }
-        showToast("Press Right Shift in game to open the mods menu.");
+        GolemsMenu.open();
     }
 
     // ------------------------------------------------------------------ input

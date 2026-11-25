@@ -10,6 +10,10 @@ repositories {
         forRepository { maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven' } }
         filter { includeGroup 'maven.modrinth' }
     }
+    exclusiveContent {
+        forRepository { maven { name = 'Polyfrost'; url = 'https://repo.polyfrost.org/releases' } }
+        filter { includeGroup 'org.polyfrost.oneconfig' }
+    }
     mavenCentral()
 }
 
@@ -28,6 +32,9 @@ dependencies {
     // the Kotlin runtime (with coroutines and serialization); every Golem's Client bundle ships it
     modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
     // only the lobby's compatibility hooks look at these, when they're installed
+    // OneConfig's settings (comes with OneClient's mods): Golem's Client's mod menu shows and edits them
+    compileOnly("org.polyfrost.oneconfig:config:1.9.1") { transitive = false }
+    compileOnly("org.polyfrost.oneconfig:config-impl:1.9.1") { transitive = false }
     modCompileOnly("maven.modrinth:sodium:${project.sodium_version}") { transitive = false }
     modCompileOnly("maven.modrinth:iris:${project.iris_version}") { transitive = false }
     // skips the Sodium and Iris hooks when those mods aren't there

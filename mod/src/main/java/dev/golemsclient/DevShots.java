@@ -74,6 +74,12 @@ public final class DevShots {
         step("06d_settings", () -> mc.setScreen(new net.minecraft.client.gui.screens.options.OptionsScreen(mc.screen, mc.options)), 1200, null);
         step("06e_settings_search", () -> dev.golemsclient.menu.SettingsScreen.dev(null, "chat"), 900, null);
         step("06f_crash_screen", () -> mc.setScreen(dev.golemsclient.menu.CrashScreen.devSample()), 900, null);
+        // Golem's Client's mod menu (no OneConfig in development, so the Mods page shows its empty state)
+        step("06g_menu_mods", () -> {
+            mc.setScreen(null);
+            dev.golemsclient.menu.GolemsMenu.open();
+        }, 900, null);
+        step("06h_menu_keybinds", () -> dev.golemsclient.menu.GolemsMenu.devPage(3, null), 900, null);
         step("07_lobby_again", () -> mc.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), 3500,
                 () -> mc.screen instanceof MainMenu && LobbyBridge.showing() && LobbyBridge.panelAlpha() >= 0.99f);
         step("08_news", () -> {

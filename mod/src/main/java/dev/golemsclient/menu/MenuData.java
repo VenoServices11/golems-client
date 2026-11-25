@@ -51,6 +51,9 @@ public final class MenuData {
     /** The first-launch setup was finished (or skipped). */
     public boolean setupDone = false;
 
+    /** The mod menu's favourite mods (shown first). */
+    public java.util.Set<String> favouriteMods = new java.util.LinkedHashSet<>();
+
     // the lobby (the world behind the menu)
     public boolean lobbyEnabled = true;
     /** "auto" (the season's scene) or a scene id. */

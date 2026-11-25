@@ -1079,6 +1079,10 @@ public final class MainMenu extends MenuScreen {
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
         if (setup.showing()) {
+            if (setup.capturing()) {
+                setup.captureKey(event);
+                return true;
+            }
             if (lobby() && LobbyBridge.skipIntro()) return true;
             if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) setup.next();
             else if (key == GLFW.GLFW_KEY_ESCAPE) setup.back();
