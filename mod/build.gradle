@@ -12,7 +12,7 @@ repositories {
     }
     exclusiveContent {
         forRepository { maven { name = 'Polyfrost'; url = 'https://repo.polyfrost.org/releases' } }
-        filter { includeGroup 'org.polyfrost.oneconfig'; includeGroup 'org.polyfrost' }
+        filter { includeGroup 'org.polyfrost.oneconfig' }
     }
     mavenCentral()
 }
@@ -82,10 +82,3 @@ loom {
     }
 }
 
-// the dev screenshots run with OneConfig too, so the mod menu's OneConfig pages can be checked
-if (project.hasProperty('devshots')) {
-    dependencies {
-        modLocalRuntime("org.polyfrost.oneconfig:1.21.11-fabric:1.9.1") { transitive = false }
-        modLocalRuntime("org.polyfrost:polycompose-1.21.11-fabric:3.0.2") { transitive = false }
-    }
-}
