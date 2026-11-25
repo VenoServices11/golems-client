@@ -5,9 +5,11 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "OneConfigAccentMixin",
+    "OneConfigCreditsMixin",
     "OneConfigIconMixin",
     "OneConfigTextMixin",
     "OneConfigVersionMixin",
+    "OneConfigWarmStepMixin",
     "OneConfigWarmUpMixin"
   ],
   "injectors": {

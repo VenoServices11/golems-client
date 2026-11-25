@@ -79,6 +79,23 @@ export default {
         return json({ error: "update server error" }, 502);
       }
     }
+    // can this server reach Mojang's session server (needed to check accounts for friends)? A made-up server id
+    // that nobody joined should answer 204.
+    if (request.method === "GET" && url.pathname === "/health/mojang") {
+      const out = {};
+      for (const [name, target] of [
+        ["sessionserver", "https://sessionserver.mojang.com/session/minecraft/hasJoined?username=emeraldgolem3&serverId=" + randomHex(20)],
+        ["api", "https://api.mojang.com/users/profiles/minecraft/emeraldgolem3"],
+      ]) {
+        try {
+          const r = await fetch(target, { headers: { "user-agent": "GolemsClient/1.0" } });
+          out[name] = r.status;
+        } catch (e) {
+          out[name] = String(e && e.message || e);
+        }
+      }
+      return json(out);
+    }
     if (request.method === "GET" && url.pathname === "/launcher/dashboard") {
       return new Response(DASHBOARD_HTML, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
     }

@@ -3,6 +3,7 @@ package dev.golemsclient.oneconfig;
 import dev.golemsclient.GolemsClient;
 import dev.golemsclient.menu.MenuData;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -27,7 +28,11 @@ public final class OneConfigBrand {
             "oneconfig-mc-light.svg", "logo-dark.svg",
             "oneconfig-icon.svg", "icon.svg");
 
+    private static final String MENU_SCREEN = "org.polyfrost.oneconfig.internal.ui.compose.impls.OneConfigUIScreen";
+
     private static boolean checked;
+    private static boolean creditsHidden;
+    private static boolean timed;
 
     private OneConfigBrand() {
     }
@@ -38,6 +43,63 @@ public final class OneConfigBrand {
             checked = true;
             redAccent();
         });
+        timeFirstOpen();
+    }
+
+    /**
+     * Writes how long the first open of the mods menu took to the log ("First mods menu open: ..."), so a slow first
+     * open can be looked into from latest.log.
+     */
+    private static void timeFirstOpen() {
+        long[] start = {0L};
+        ScreenEvents.BEFORE_INIT.register((mc, screen, w, h) -> {
+            if (timed || !screen.getClass().getName().equals(MENU_SCREEN)) return;
+            timed = true;
+            start[0] = System.nanoTime();
+            long[] last = {0L};
+            long[] initDone = {0L};
+            int[] frames = {0};
+            int[] slow = {0};
+            long[] worst = {0L};
+            long[] firstFrame = {0L};
+            boolean[] done = {false};
+            ScreenEvents.AFTER_INIT.register((mc2, s2, w2, h2) -> {
+                if (s2 == screen && initDone[0] == 0L) initDone[0] = System.nanoTime();
+            });
+            ScreenEvents.afterRender(screen).register((s, g, mx, my, delta) -> {
+                if (done[0]) return;
+                long now = System.nanoTime();
+                if (frames[0] == 0) firstFrame[0] = now;
+                else {
+                    long gap = now - last[0];
+                    worst[0] = Math.max(worst[0], gap);
+                    if (gap > 50_000_000L) slow[0]++;
+                }
+                last[0] = now;
+                frames[0]++;
+                if (now - start[0] < 3_000_000_000L && frames[0] < 240) return;
+                done[0] = true;
+                GolemsClient.LOGGER.info("First mods menu open: set up in {}ms, first frame after {}ms, slowest frame {}ms, {} frames over 50ms in the first 3s",
+                        ms(initDone[0] == 0L ? 0L : initDone[0] - start[0]), ms(firstFrame[0] - start[0]), ms(worst[0]), slow[0]);
+            });
+        });
+    }
+
+    private static long ms(long nanos) {
+        return Math.max(0L, nanos / 1_000_000L);
+    }
+
+    /** OneConfig's Credits page is taken out of the menu (the credit stays in the source and licence). */
+    public static void hideCredits() {
+        if (creditsHidden) return;
+        try {
+            Class<?> pages = Class.forName("org.polyfrost.oneconfig.api.ui.v1.page.OneConfigPages");
+            pages.getMethod("unregister", String.class).invoke(null, "oneconfig:credits");
+            creditsHidden = true;
+        } catch (Throwable e) {
+            creditsHidden = true;
+            GolemsClient.LOGGER.debug("Couldn't hide OneConfig's Credits page: {}", e.toString());
+        }
     }
 
     /** OneConfig's logo files, swapped for Golem's Client's. */
@@ -52,6 +114,7 @@ public final class OneConfigBrand {
 
     /** OneConfig's words, with Golem's Client's name. */
     public static String text(String s) {
+        if ("Changelog and credits".equals(s)) return "Changelog";
         return s == null || !s.contains("OneConfig") ? s : s.replace("OneConfig", "Golem's Client");
     }
 
