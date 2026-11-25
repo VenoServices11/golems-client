@@ -56,8 +56,11 @@ final class SocialPanel {
 
     void show() {
         open = true;
-        typing = false;
+        typing = typingMsg = typingGroup = false;
         scroll = 0f;
+        if (chat != null) Chats.close();
+        chat = null;
+        newGroup = false;
         Friends.State s = Friends.state();
         // straight to the requests when someone asked, or the chats when there's a new message
         tab = !Parties.invites().isEmpty() ? 2 : s != null && !s.incoming().isEmpty() && s.online() == 0 ? 3 : Chats.unread() > 0 ? 1 : 0;
