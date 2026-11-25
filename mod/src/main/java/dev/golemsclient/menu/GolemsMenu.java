@@ -653,7 +653,7 @@ public final class GolemsMenu extends MenuScreen {
         if (!visible) return;
         hit(bx0, cy - 9f, bx1, cy + 9f, () -> capturing = capturing == k ? null : k);
         if (!k.isDefault()) smallIcon("refresh", x1 - 16f, cy, "Back to " + k.getDefaultKey().getDisplayName().getString(), () -> {
-            minecraft.options.setKey(k, k.getDefaultKey());
+            k.setKey(k.getDefaultKey());
             KeyMapping.resetMapping();
             minecraft.options.save();
         });
@@ -661,7 +661,7 @@ public final class GolemsMenu extends MenuScreen {
 
     private void bind(InputConstants.Key key) {
         if (capturing == null) return;
-        minecraft.options.setKey(capturing, key);
+        capturing.setKey(key);
         KeyMapping.resetMapping();
         minecraft.options.save();
         capturing = null;

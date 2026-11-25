@@ -264,7 +264,7 @@ final class SetupPage {
     void captureKey(net.minecraft.client.input.KeyEvent event) {
         capturingKey = false;
         if (event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE || GolemsMenuKey.key() == null) return;
-        Minecraft.getInstance().options.setKey(GolemsMenuKey.key(), com.mojang.blaze3d.platform.InputConstants.getKey(event));
+        GolemsMenuKey.key().setKey(com.mojang.blaze3d.platform.InputConstants.getKey(event));
         net.minecraft.client.KeyMapping.resetMapping();
         Minecraft.getInstance().options.save();
     }
