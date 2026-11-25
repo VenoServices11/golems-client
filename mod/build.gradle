@@ -85,7 +85,7 @@ loom {
 // the dev screenshots run with OneConfig too, so the mod menu's OneConfig pages can be checked
 if (project.hasProperty('devshots')) {
     dependencies {
-        modLocalRuntime("org.polyfrost.oneconfig:1.21.11-fabric:1.9.1") { exclude group: 'net.fabricmc', module: 'fabric-language-kotlin' }
-        modLocalRuntime("org.polyfrost:polycompose-1.21.11-fabric:3.0.2") { exclude group: 'net.fabricmc', module: 'fabric-language-kotlin' }
+        modLocalRuntime("org.polyfrost.oneconfig:1.21.11-fabric:1.9.1") { transitive = false }
+        modLocalRuntime("org.polyfrost:polycompose-1.21.11-fabric:3.0.2") { transitive = false }
     }
 }
