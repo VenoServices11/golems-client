@@ -1,324 +1,204 @@
-use reqwest::{Method, Url};
-use serde::de::DeserializeOwned;
+//! The friends panel's requests, answered by Golem's Client's own server (see `golems.rs`).
+//! Messages and groups aren't on that server yet: their lists are empty and sending says so.
+
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use serde_json::json;
 use uuid::Uuid;
 
 use golems_auth::MinecraftAccount;
-use golems_net::RequestError;
 
-use crate::api::send_to;
 use crate::models::{
-    BlockedPlayer, CreateGroupRequest, CursorPage, EditMessageRequest, Friend, FriendRequest, GroupMessage,
-    GroupSummary, IncomingSessionInvite, MAX_CURSOR_PAGE_SIZE, MAX_PAGE_SIZE, MAX_RESOLVE_BATCH, PlayerStatus, RenameGroupRequest, ResolveRequest, ResolveResponse,
-    ResolvedPlayer, SendMessageRequest, SpecialChatStatus, StatusBody,
+    BlockedPlayer, CursorPage, Friend, FriendRequest, GroupMessage, GroupSummary,
+    IncomingSessionInvite, PlayerStatus, ResolvedPlayer,
 };
-use crate::{PlusClient, PlusError, base_url, session};
+use crate::{PlusClient, PlusError, golems, session};
+
+/// "Invisible" in the panel: this launcher stops telling friends it's open.
+static INVISIBLE: AtomicBool = AtomicBool::new(false);
+
+#[must_use]
+pub fn invisible() -> bool {
+    INVISIBLE.load(Ordering::SeqCst)
+}
 
 impl PlusClient {
-    /// One page of conversations, most recently active first; pass the
-    /// returned cursor back for the next page.
+    /// One page of conversations: none yet (messages come in a later update).
     pub async fn groups_page(
         &self,
-        cursor: Option<&str>,
-        limit: u64,
+        _cursor: Option<&str>,
+        _limit: u64,
     ) -> Result<CursorPage<GroupSummary>, PlusError> {
-        self.page("/v1/groups", cursor, limit).await
+        Ok(CursorPage {
+            items: Vec::new(),
+            cursor: None,
+        })
     }
 
-    pub async fn open_direct_message(&self, player: Uuid) -> Result<GroupSummary, PlusError> {
-        self.json(Method::POST, self.url(&format!("/groups/dm/{player}"))?, None)
-            .await
+    pub async fn open_direct_message(&self, _player: Uuid) -> Result<GroupSummary, PlusError> {
+        Err(golems::messages_not_yet())
     }
 
     pub async fn create_group(
         &self,
-        name: &str,
-        members: &[Uuid],
+        _name: &str,
+        _members: &[Uuid],
     ) -> Result<GroupSummary, PlusError> {
-        let body = serialize(&CreateGroupRequest { name, members })?;
-        self.json(Method::POST, self.url("/groups")?, Some(body))
-            .await
+        Err(golems::messages_not_yet())
     }
 
-    pub async fn rename_group(&self, group_id: i32, name: &str) -> Result<(), PlusError> {
-        let body = serialize(&RenameGroupRequest { name })?;
-        self.unit(
-            Method::PATCH,
-            self.url(&format!("/v1/groups/{group_id}"))?,
-            Some(body),
-        )
-        .await
+    pub async fn rename_group(&self, _group_id: i32, _name: &str) -> Result<(), PlusError> {
+        Err(golems::messages_not_yet())
     }
 
-    pub async fn add_member(&self, group_id: i32, player: Uuid) -> Result<(), PlusError> {
-        self.unit(
-            Method::POST,
-            self.url(&format!("/groups/{group_id}/members/{player}"))?,
-            None,
-        )
-        .await
+    pub async fn add_member(&self, _group_id: i32, _player: Uuid) -> Result<(), PlusError> {
+        Err(golems::messages_not_yet())
     }
 
-    pub async fn remove_member(&self, group_id: i32, player: Uuid) -> Result<(), PlusError> {
-        self.unit(
-            Method::DELETE,
-            self.url(&format!("/groups/{group_id}/members/{player}"))?,
-            None,
-        )
-        .await
+    pub async fn remove_member(&self, _group_id: i32, _player: Uuid) -> Result<(), PlusError> {
+        Err(golems::messages_not_yet())
     }
 
     pub async fn messages(
         &self,
-        group_id: i32,
-        before: Option<i64>,
-        limit: Option<u64>,
+        _group_id: i32,
+        _before: Option<i64>,
+        _limit: Option<u64>,
     ) -> Result<Vec<GroupMessage>, PlusError> {
-        let mut url = self.url(&format!("/groups/{group_id}/messages"))?;
-        {
-            let mut query = url.query_pairs_mut();
-            if let Some(before) = before {
-                query.append_pair("before", &before.to_string());
-            }
-            if let Some(limit) = limit {
-                query.append_pair("limit", &limit.min(MAX_PAGE_SIZE).to_string());
-            }
-        }
-
-        self.json(Method::GET, url, None).await
+        Ok(Vec::new())
     }
 
     pub async fn send_message(
         &self,
-        group_id: i32,
-        content: &str,
-        idempotency_key: Uuid,
+        _group_id: i32,
+        _content: &str,
+        _idempotency_key: Uuid,
     ) -> Result<GroupMessage, PlusError> {
-        let body = serialize(&SendMessageRequest {
-            content,
-            idempotency_key,
-        })?;
-
-        self.json(
-            Method::POST,
-            self.url(&format!("/groups/{group_id}/messages"))?,
-            Some(body),
-        )
-        .await
+        Err(golems::messages_not_yet())
     }
 
     pub async fn edit_message(
         &self,
-        group_id: i32,
-        message_id: i64,
-        content: &str,
+        _group_id: i32,
+        _message_id: i64,
+        _content: &str,
     ) -> Result<GroupMessage, PlusError> {
-        let body = serialize(&EditMessageRequest { content })?;
-
-        self.json(
-            Method::PATCH,
-            self.url(&format!("/groups/{group_id}/messages/{message_id}"))?,
-            Some(body),
-        )
-        .await
+        Err(golems::messages_not_yet())
     }
 
-    pub async fn delete_message(&self, group_id: i32, message_id: i64) -> Result<(), PlusError> {
-        self.unit(
-            Method::DELETE,
-            self.url(&format!("/groups/{group_id}/messages/{message_id}"))?,
-            None,
-        )
-        .await
+    pub async fn delete_message(&self, _group_id: i32, _message_id: i64) -> Result<(), PlusError> {
+        Err(golems::messages_not_yet())
     }
 
-    pub async fn mark_read(&self, group_id: i32, message_id: i64) -> Result<(), PlusError> {
-        self.unit(
-            Method::POST,
-            self.url(&format!("/groups/{group_id}/read/{message_id}"))?,
-            None,
-        )
-        .await
+    pub async fn mark_read(&self, _group_id: i32, _message_id: i64) -> Result<(), PlusError> {
+        Ok(())
     }
 
     pub async fn friends(&self) -> Result<Vec<Friend>, PlusError> {
-        self.paged("/v1/social/friends").await
+        let account = self.account().await?;
+        Ok(golems::friends_of(&golems::state(&account).await?))
     }
 
     pub async fn remove_friend(&self, player: Uuid) -> Result<(), PlusError> {
-        self.unit(
-            Method::DELETE,
-            self.url(&format!("/social/friends/{player}"))?,
-            None,
-        )
-        .await
+        let account = self.account().await?;
+        golems::call(&account, "/friends/remove", json!({ "uuid": player.simple().to_string() }))
+            .await
+            .map(drop)
     }
 
     pub async fn incoming_requests(&self) -> Result<Vec<FriendRequest>, PlusError> {
-        self.paged("/v1/social/requests/incoming").await
+        let account = self.account().await?;
+        Ok(golems::requests_of(&golems::state(&account).await?.incoming))
     }
 
     pub async fn outgoing_requests(&self) -> Result<Vec<FriendRequest>, PlusError> {
-        self.paged("/v1/social/requests/outgoing").await
+        let account = self.account().await?;
+        Ok(golems::requests_of(&golems::state(&account).await?.outgoing))
     }
 
     pub async fn send_friend_request(
         &self,
         player: Uuid,
     ) -> Result<Option<FriendRequest>, PlusError> {
-        self.json(
-            Method::POST,
-            self.url(&format!("/social/requests/{player}"))?,
-            None,
-        )
-        .await
+        let account = self.account().await?;
+        golems::add(&account, player).await?;
+        Ok(None)
     }
 
     pub async fn accept_request(&self, request_id: i32) -> Result<(), PlusError> {
-        self.unit(
-            Method::POST,
-            self.url(&format!("/social/requests/{request_id}/accept"))?,
-            None,
-        )
-        .await
+        self.by_id("/friends/accept", request_id).await
     }
 
     pub async fn decline_request(&self, request_id: i32) -> Result<(), PlusError> {
-        self.unit(
-            Method::POST,
-            self.url(&format!("/social/requests/{request_id}/decline"))?,
-            None,
-        )
-        .await
+        self.by_id("/friends/decline", request_id).await
     }
 
     pub async fn incoming_session_invites(&self) -> Result<Vec<IncomingSessionInvite>, PlusError> {
-        self.json(Method::GET, self.url("/sessions/invites/incoming")?, None)
-            .await
+        Ok(Vec::new())
     }
 
-    pub async fn decline_session_invite(&self, invite_id: i32) -> Result<(), PlusError> {
-        self.unit(
-            Method::POST,
-            self.url(&format!("/sessions/invites/{invite_id}/decline"))?,
-            None,
-        )
-        .await
+    pub async fn decline_session_invite(&self, _invite_id: i32) -> Result<(), PlusError> {
+        Ok(())
     }
 
     pub async fn cancel_request(&self, request_id: i32) -> Result<(), PlusError> {
-        self.unit(
-            Method::DELETE,
-            self.url(&format!("/social/requests/{request_id}"))?,
-            None,
-        )
-        .await
+        self.by_id("/friends/cancel", request_id).await
     }
 
     pub async fn blocked(&self) -> Result<Vec<BlockedPlayer>, PlusError> {
-        self.paged("/v1/social/blocked").await
+        let account = self.account().await?;
+        Ok(golems::blocked_of(&golems::state(&account).await?))
     }
 
     pub async fn block(&self, player: Uuid) -> Result<(), PlusError> {
-        self.unit(
-            Method::POST,
-            self.url(&format!("/social/blocked/{player}"))?,
-            None,
-        )
-        .await
+        let account = self.account().await?;
+        golems::call(&account, "/friends/block", json!({ "uuid": player.simple().to_string() }))
+            .await
+            .map(drop)
     }
 
     pub async fn unblock(&self, player: Uuid) -> Result<(), PlusError> {
-        self.unit(
-            Method::DELETE,
-            self.url(&format!("/social/blocked/{player}"))?,
-            None,
-        )
-        .await
+        let account = self.account().await?;
+        golems::call(&account, "/friends/unblock", json!({ "uuid": player.simple().to_string() }))
+            .await
+            .map(drop)
     }
 
     pub async fn is_special_chat_target(&self) -> Result<bool, PlusError> {
-        let body: SpecialChatStatus = self
-            .json(Method::GET, self.url("/special-chat")?, None)
-            .await?;
-        Ok(body.is_special_chat_target)
+        Ok(false)
     }
 
     pub async fn status(&self) -> Result<PlayerStatus, PlusError> {
-        let body: StatusBody = self
-            .json(Method::GET, self.url("/account/status")?, None)
-            .await?;
-        Ok(body.status)
+        Ok(if invisible() {
+            PlayerStatus::Offline
+        } else {
+            PlayerStatus::Online
+        })
     }
 
     pub async fn set_status(&self, status: PlayerStatus) -> Result<(), PlusError> {
-        let body = serialize(&StatusBody { status })?;
-        self.unit(Method::PUT, self.url("/account/status")?, Some(body))
-            .await
+        let hide = status == PlayerStatus::Offline;
+        INVISIBLE.store(hide, Ordering::SeqCst);
+        if hide {
+            let account = self.account().await?;
+            golems::leave(&account).await;
+        }
+        // the session sends (or stops sending) this launcher's presence straight away
+        self.request_restart();
+        Ok(())
     }
 
     pub async fn resolve_players(&self, ids: &[Uuid]) -> Result<Vec<ResolvedPlayer>, PlusError> {
-        let mut resolved = Vec::with_capacity(ids.len());
-
-        for chunk in ids.chunks(MAX_RESOLVE_BATCH) {
-            let body = serialize(&ResolveRequest { ids: chunk })?;
-            let page: ResolveResponse = self
-                .json(Method::POST, self.url("/players/resolve")?, Some(body))
-                .await?;
-            resolved.extend(page.players);
-        }
-
-        Ok(resolved)
+        Ok(golems::resolved(ids))
     }
 
     pub async fn lookup_username(&self, username: &str) -> Result<Option<Uuid>, PlusError> {
-        let mut url = self.url("/players/by-username")?;
-        url.path_segments_mut()
-            .map_err(|()| url::ParseError::RelativeUrlWithCannotBeABaseBase)?
-            .push(username);
-
-        match self.json::<ResolvedPlayer>(Method::GET, url, None).await {
-            Ok(player) => Ok(Some(player.id)),
-            Err(err) if err.is_not_found() => Ok(None),
-            Err(err) => Err(err),
-        }
+        golems::mojang_uuid(username).await
     }
 
-    fn url(&self, path: &str) -> Result<Url, PlusError> {
-        Ok(Url::parse(&format!("{}{path}", base_url()))?)
-    }
-
-    async fn paged<T: DeserializeOwned>(&self, path: &str) -> Result<Vec<T>, PlusError> {
-        let mut items = Vec::new();
-        let mut cursor: Option<String> = None;
-
-        loop {
-            let page: CursorPage<T> = self
-                .page(path, cursor.as_deref(), MAX_CURSOR_PAGE_SIZE)
-                .await?;
-            items.extend(page.items);
-
-            match page.cursor {
-                Some(next) => cursor = Some(next),
-                None => return Ok(items),
-            }
-        }
-    }
-
-    async fn page<T: DeserializeOwned>(
-        &self,
-        path: &str,
-        cursor: Option<&str>,
-        limit: u64,
-    ) -> Result<CursorPage<T>, PlusError> {
-        let mut url = self.url(path)?;
-        {
-            let mut query = url.query_pairs_mut();
-            query.append_pair("limit", &limit.min(MAX_CURSOR_PAGE_SIZE).to_string());
-            if let Some(cursor) = cursor {
-                query.append_pair("cursor", cursor);
-            }
-        }
-        self.json(Method::GET, url, None).await
+    async fn by_id(&self, path: &str, id: i32) -> Result<(), PlusError> {
+        let account = self.account().await?;
+        golems::call(&account, path, json!({ "id": id })).await.map(drop)
     }
 
     async fn account(&self) -> Result<MinecraftAccount, PlusError> {
@@ -326,33 +206,4 @@ impl PlusClient {
             .await?
             .ok_or(PlusError::NoAccount)
     }
-
-    async fn json<T: DeserializeOwned>(
-        &self,
-        method: Method,
-        url: Url,
-        body: Option<serde_json::Value>,
-    ) -> Result<T, PlusError> {
-        let account = self.account().await?;
-        Ok(send_to(&account, method, url.as_str(), body.as_ref())
-            .await?
-            .json::<T>()
-            .await?)
-    }
-
-    async fn unit(
-        &self,
-        method: Method,
-        url: Url,
-        body: Option<serde_json::Value>,
-    ) -> Result<(), PlusError> {
-        let account = self.account().await?;
-        send_to(&account, method, url.as_str(), body.as_ref()).await?;
-        Ok(())
-    }
-}
-
-fn serialize<T: serde::Serialize>(value: &T) -> Result<serde_json::Value, PlusError> {
-    serde_json::to_value(value)
-        .map_err(|err| PlusError::Request(RequestError::SerializeError(err)))
 }

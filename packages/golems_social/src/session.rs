@@ -1,31 +1,25 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use bytes::Bytes;
-use futures_util::{SinkExt, TryStreamExt};
 use rand::Rng;
-use reqwest_websocket::{Message, Upgrade};
 use uuid::Uuid;
 
 use golems_auth::MinecraftAccount;
 use golems_events::{ChatEvent, EventBus};
-use golems_net::RequestError;
 
-use crate::packets::{ClientboundPacket, ServerboundPacket};
 use crate::{
-    PlusClient, PlusError, REQUEST_TIMEOUT, api, base_url, party, plus_blocked, social_allowed,
+    PlusClient, PlusError, REQUEST_TIMEOUT, api, base_url, golems, plus_blocked, rest,
+    social_allowed,
 };
 
 const MOJANG_JOIN_URL: &str = "https://sessionserver.mojang.com/session/minecraft/join";
 
-const PING_INTERVAL: Duration = Duration::from_secs(30);
+const POLL_INTERVAL: Duration = Duration::from_secs(20);
+const PRESENCE_INTERVAL: Duration = Duration::from_secs(120);
 
 const RECONNECT_DELAY: Duration = Duration::from_secs(15);
 const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(300);
-
-const MAX_PLAYERS_PER_PACKET: usize = 64;
-const MAX_WATCHED_PLAYERS: usize = 512;
 
 #[derive(serde::Deserialize)]
 struct LoginResponse {
@@ -37,13 +31,6 @@ enum Outcome {
     NoAccount,
     Failed,
     Restart,
-}
-
-enum Frame {
-    Ping,
-    Restart,
-    Watch,
-    Message(Option<Message>),
 }
 
 enum Ended {
@@ -153,215 +140,101 @@ async fn session(
     }
 }
 
+/// Golem's Client: no websocket. The friends list is fetched every few seconds from Golem's Client's server, and the
+/// changes are passed on as the same events the panel already listens to. Every two minutes (unless "Invisible") the
+/// request also says this launcher is open, so friends see "In the launcher".
 async fn run_session(
     client: &PlusClient,
-    socket: &reqwest::Client,
+    _socket: &reqwest::Client,
     account: &MinecraftAccount,
     connected: &mut bool,
     restart: &mut tokio::sync::watch::Receiver<u64>,
 ) -> Result<Ended, PlusError> {
-    let session_url = base_url();
-    let token = api::token_for(account, None).await?;
-
-    let mut websocket = socket
-        .get(format!("{session_url}/websocket"))
-        .bearer_auth(&token)
-        .upgrade()
-        .send()
-        .await?
-        .into_websocket()
-        .await?;
-
-    *connected = true;
-    client
-        .events
-        .chat(ChatEvent::ConnectionChanged { connected: true });
-    tracing::info!("[plus] websocket connected for {}", account.id);
-    party::connected();
-
     let account_id = account.id;
-    let mut watched = client.watched_players();
-    let url = session_url.as_str();
-    pump(
-        &mut websocket,
-        &client.events,
-        PING_INTERVAL,
-        account_id,
-        restart,
-        &mut watched,
-        || async move {
-            plus_blocked()
-                || !social_allowed()
-                || base_url() != url
-                || account_changed(&client.auth, account_id).await
-        },
-    )
-    .await
-}
-
-async fn pump<F, Fut>(
-    websocket: &mut reqwest_websocket::WebSocket,
-    events: &EventBus,
-    ping_interval: Duration,
-    account_id: Uuid,
-    restart: &mut tokio::sync::watch::Receiver<u64>,
-    watched: &mut tokio::sync::watch::Receiver<Vec<Uuid>>,
-    should_stop: F,
-) -> Result<Ended, PlusError>
-where
-    F: Fn() -> Fut,
-    Fut: std::future::Future<Output = bool>,
-{
-    let mut ping = tokio::time::interval(ping_interval);
-    ping.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-    ping.tick().await;
-
-    let mut subscribed = HashSet::new();
-    let wanted = watched.borrow_and_update().clone();
-    sync_watched(websocket, &mut subscribed, &wanted).await?;
+    let mut previous: Option<golems::State> = None;
+    let mut presence_at: Option<Instant> = None;
 
     loop {
-        let frame = tokio::select! {
-            _ = ping.tick() => Frame::Ping,
-            _ = restart.changed() => Frame::Restart,
-            Ok(()) = watched.changed() => Frame::Watch,
-            message = websocket.try_next() => Frame::Message(message?),
-        };
+        if plus_blocked() || !social_allowed() || account_changed(&client.auth, account_id).await {
+            golems::leave(account).await;
+            tracing::info!("[friends] ending the session for {account_id}");
+            return Ok(Ended::Closed);
+        }
 
-        match frame {
-            Frame::Ping => {
-                if should_stop().await {
-                    tracing::info!("[plus] ending session for {account_id}");
-                    return Ok(Ended::Restart);
-                }
+        let send_presence = !rest::invisible()
+            && presence_at.is_none_or(|at| at.elapsed() >= PRESENCE_INTERVAL);
+        let state = golems::fetch_state(account, send_presence).await?;
+        if send_presence {
+            presence_at = Some(Instant::now());
+        }
 
-                websocket.send(Message::Ping(Bytes::new())).await?;
-            }
-            Frame::Restart => return Ok(Ended::Restart),
-            Frame::Watch => {
-                let wanted = watched.borrow_and_update().clone();
-                sync_watched(websocket, &mut subscribed, &wanted).await?;
-            }
-            Frame::Message(Some(Message::Text(payload))) => {
-                dispatch(events, account_id, &payload);
-                party::dispatch(&payload);
-            }
-            Frame::Message(Some(Message::Close { code, reason })) => {
-                tracing::info!("[plus] websocket closed by the server: {code:?} {reason}");
-                break;
-            }
-            Frame::Message(Some(_)) => {}
-            Frame::Message(None) => break,
+        if !*connected {
+            *connected = true;
+            client
+                .events
+                .chat(ChatEvent::ConnectionChanged { connected: true });
+            tracing::info!("[friends] connected for {account_id}");
+        }
+        changes(&client.events, account_id, previous.as_ref(), &state);
+        previous = Some(state);
+
+        tokio::select! {
+            () = tokio::time::sleep(POLL_INTERVAL) => {}
+            _ = restart.changed() => return Ok(Ended::Restart),
         }
     }
-
-    Ok(Ended::Closed)
 }
 
-async fn sync_watched(
-    websocket: &mut reqwest_websocket::WebSocket,
-    subscribed: &mut HashSet<Uuid>,
-    wanted: &[Uuid],
-) -> Result<(), PlusError> {
-    let wanted: HashSet<Uuid> = wanted.iter().copied().take(MAX_WATCHED_PLAYERS).collect();
-
-    let removed: Vec<Uuid> = subscribed.difference(&wanted).copied().collect();
-    let added: Vec<Uuid> = wanted.difference(subscribed).copied().collect();
-
-    for players in removed.chunks(MAX_PLAYERS_PER_PACKET) {
-        send(
-            websocket,
-            &ServerboundPacket::UnsubscribePlayers { players },
-        )
-        .await?;
-    }
-    for players in added.chunks(MAX_PLAYERS_PER_PACKET) {
-        send(websocket, &ServerboundPacket::SubscribePlayers { players }).await?;
-    }
-
-    *subscribed = wanted;
-    Ok(())
-}
-
-async fn send(
-    websocket: &mut reqwest_websocket::WebSocket,
-    packet: &ServerboundPacket<'_>,
-) -> Result<(), PlusError> {
-    let payload = serde_json::to_string(packet)
-        .map_err(|err| PlusError::Request(RequestError::SerializeError(err)))?;
-    websocket.send(Message::Text(payload)).await?;
-    Ok(())
-}
-
-fn dispatch(events: &EventBus, account: Uuid, payload: &str) {
-    let packet = match serde_json::from_str::<ClientboundPacket>(payload) {
-        Ok(packet) => packet,
-        Err(err) => {
-            tracing::warn!("[plus] could not decode a websocket packet: {err}");
-            return;
-        }
+/// What changed since the last fetch, as the panel's events.
+fn changes(events: &EventBus, account: Uuid, before: Option<&golems::State>, now: &golems::State) {
+    let Some(before) = before else {
+        events.chat(ChatEvent::RosterChanged);
+        return;
     };
+    let mut roster_changed = false;
 
-    match packet {
-        ClientboundPacket::GroupMessageReceived {
-            group_id,
-            message_id,
-            sender,
-            content,
-            session_invite_id,
-            session_invite_status,
-        } => events.chat(ChatEvent::MessageReceived {
-            account,
-            group_id,
-            message_id,
-            sender,
-            content,
-            invite_id: session_invite_id,
-            invite_status: session_invite_status,
-        }),
-        ClientboundPacket::GroupMessageEdited {
-            group_id,
-            message_id,
-            content,
-            session_invite_status,
-        } => events.chat(ChatEvent::MessageEdited {
-            group_id,
-            message_id,
-            content,
-            invite_status: session_invite_status,
-        }),
-        ClientboundPacket::GroupMessageDeleted {
-            group_id,
-            message_id,
-        } => events.chat(ChatEvent::MessageDeleted {
-            group_id,
-            message_id,
-        }),
-        ClientboundPacket::GroupRenamed { group_id, name } => {
-            events.chat(ChatEvent::GroupRenamed { group_id, name });
-        }
-        ClientboundPacket::PlayerPresence { player, online } => {
-            events.chat(ChatEvent::PresenceChanged { player, online });
-        }
-        ClientboundPacket::SubscriptionSnapshot { users } => {
-            for player in users {
-                events.chat(ChatEvent::PresenceChanged {
-                    player,
-                    online: true,
-                });
+    let was: HashMap<&str, &golems::FriendRow> = before.friends.iter().map(|f| (f.uuid.as_str(), f)).collect();
+    for friend in &now.friends {
+        match was.get(friend.uuid.as_str()) {
+            None => roster_changed = true,
+            Some(old) => {
+                if old.status.online() != friend.status.online() {
+                    events.chat(ChatEvent::PresenceChanged {
+                        player: golems::parse_uuid(&friend.uuid),
+                        online: friend.status.online(),
+                    });
+                }
+                if old.status.text() != friend.status.text() || old.name != friend.name {
+                    roster_changed = true;
+                }
             }
         }
-        ClientboundPacket::FriendRequestReceived { sender, .. } => {
-            events.chat(ChatEvent::FriendRequestReceived { account, sender });
+    }
+    if before.friends.len() != now.friends.len() {
+        roster_changed = true;
+    }
+
+    let old_incoming: HashSet<i32> = before.incoming.iter().map(|r| r.id).collect();
+    for request in &now.incoming {
+        if !old_incoming.contains(&request.id) {
+            events.chat(ChatEvent::FriendRequestReceived {
+                account,
+                sender: golems::parse_uuid(&request.uuid),
+            });
+            roster_changed = true;
         }
-        ClientboundPacket::FriendRequestUpdated { .. }
-        | ClientboundPacket::FriendRemoved { .. } => events.chat(ChatEvent::RosterChanged),
-        ClientboundPacket::Error {
-            error_code,
-            message,
-            ..
-        } => tracing::warn!("[plus] server error {error_code}: {message}"),
-        ClientboundPacket::Unhandled => {}
+    }
+    let ids = |rows: &[golems::RequestRow]| rows.iter().map(|r| r.id).collect::<Vec<_>>();
+    let blocked = |state: &golems::State| state.blocked.iter().map(|b| b.uuid.clone()).collect::<Vec<_>>();
+    if ids(before.incoming.as_slice()) != ids(now.incoming.as_slice())
+        || ids(before.outgoing.as_slice()) != ids(now.outgoing.as_slice())
+        || blocked(before) != blocked(now)
+    {
+        roster_changed = true;
+    }
+
+    if roster_changed {
+        events.chat(ChatEvent::RosterChanged);
     }
 }
 
@@ -455,344 +328,4 @@ fn generate_server_id() -> String {
     let mut bytes = [0u8; 20];
     rand::rng().fill_bytes(&mut bytes);
     golems_io::to_hex(&bytes)
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    use async_tungstenite::tokio::accept_async;
-    use async_tungstenite::tungstenite::Message as ServerMessage;
-    use futures_util::StreamExt;
-    use tokio::net::TcpListener;
-
-    use super::*;
-
-    #[test]
-    fn failures_back_off_up_to_the_cap_and_any_connection_resets_the_wait() {
-        assert_eq!(next_delay(&Outcome::Failed, RECONNECT_DELAY), RECONNECT_DELAY * 2);
-        assert_eq!(next_delay(&Outcome::Failed, MAX_RECONNECT_DELAY), MAX_RECONNECT_DELAY);
-        assert_eq!(next_delay(&Outcome::Connected, MAX_RECONNECT_DELAY), RECONNECT_DELAY);
-        assert_eq!(next_delay(&Outcome::NoAccount, MAX_RECONNECT_DELAY), RECONNECT_DELAY);
-        assert_eq!(next_delay(&Outcome::Restart, MAX_RECONNECT_DELAY), RECONNECT_DELAY);
-    }
-
-    fn account(kind: golems_auth::AccountKind, token: &str, signed_out: bool) -> MinecraftAccount {
-        MinecraftAccount {
-            id: Uuid::from_u128(1),
-            username: "player".to_string(),
-            access_token: token.to_string(),
-            refresh_token: String::new(),
-            expires: chrono::Utc::now(),
-            kind,
-            signed_out,
-        }
-    }
-
-    #[test]
-    fn only_a_signed_in_microsoft_account_with_a_token_is_usable() {
-        use golems_auth::AccountKind::{Microsoft, Offline};
-
-        assert!(usable(&account(Microsoft, "token", false), true));
-        assert!(!usable(&account(Microsoft, "token", false), false));
-        assert!(!usable(&account(Microsoft, "token", true), true));
-        assert!(!usable(&account(Microsoft, "", false), true));
-        assert!(!usable(&account(Offline, "token", false), true));
-    }
-
-    async fn ping_counting_server(close_after_pings: usize) -> (String, Arc<AtomicUsize>) {
-        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
-        let port = listener.local_addr().expect("addr").port();
-        let pings = Arc::new(AtomicUsize::new(0));
-
-        tokio::spawn({
-            let pings = Arc::clone(&pings);
-            async move {
-                let (stream, _) = listener.accept().await.expect("accept");
-                let mut server = accept_async(stream).await.expect("handshake");
-
-                while let Some(Ok(message)) = server.next().await {
-                    if let ServerMessage::Ping(_) = message
-                        && pings.fetch_add(1, Ordering::SeqCst) + 1 >= close_after_pings
-                    {
-                        let _ = server.close(None).await;
-                        break;
-                    }
-                }
-            }
-        });
-
-        (format!("ws://127.0.0.1:{port}/websocket"), pings)
-    }
-
-    async fn connect(url: &str) -> reqwest_websocket::WebSocket {
-        build_socket_client()
-            .expect("client")
-            .get(url)
-            .upgrade()
-            .send()
-            .await
-            .expect("upgrade")
-            .into_websocket()
-            .await
-            .expect("websocket")
-    }
-
-    #[tokio::test]
-    async fn pings_on_every_interval_and_stops_when_the_server_closes() {
-        let (url, pings) = ping_counting_server(3).await;
-        let mut websocket = connect(&url).await;
-        let (events, _receiver) = EventBus::channel();
-
-        let restart = tokio::sync::watch::Sender::new(0u64);
-        let mut quiet = restart.subscribe();
-        let watched = tokio::sync::watch::Sender::new(Vec::new());
-        let mut nobody = watched.subscribe();
-
-        let pumped = tokio::time::timeout(
-            Duration::from_secs(10),
-            pump(
-                &mut websocket,
-                &events,
-                Duration::from_millis(50),
-                Uuid::nil(),
-                &mut quiet,
-                &mut nobody,
-                || async { false },
-            ),
-        )
-        .await
-        .expect("pump should return once the server closes the socket");
-
-        assert!(matches!(
-            pumped.expect("pump should treat a server close as a clean end"),
-            Ended::Closed
-        ));
-        assert_eq!(pings.load(Ordering::SeqCst), 3);
-    }
-
-    async fn text_recording_server(
-        close_after: usize,
-    ) -> (
-        String,
-        tokio::sync::oneshot::Receiver<Vec<serde_json::Value>>,
-    ) {
-        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
-        let port = listener.local_addr().expect("addr").port();
-        let (done, received) = tokio::sync::oneshot::channel();
-
-        tokio::spawn(async move {
-            let (stream, _) = listener.accept().await.expect("accept");
-            let mut server = accept_async(stream).await.expect("handshake");
-            let mut texts = Vec::new();
-
-            while let Some(Ok(message)) = server.next().await {
-                if let ServerMessage::Text(text) = message {
-                    texts.push(serde_json::from_str(text.as_str()).expect("json packet"));
-                    if texts.len() >= close_after {
-                        let _ = server.close(None).await;
-                        break;
-                    }
-                }
-            }
-
-            let _ = done.send(texts);
-        });
-
-        (format!("ws://127.0.0.1:{port}/websocket"), received)
-    }
-
-    fn players_of(packet: &serde_json::Value) -> HashSet<Uuid> {
-        serde_json::from_value(packet["players"].clone()).expect("players")
-    }
-
-    #[tokio::test]
-    async fn watched_friends_are_subscribed_and_kept_in_step() {
-        let first = Uuid::from_u128(1);
-        let second = Uuid::from_u128(2);
-        let third = Uuid::from_u128(3);
-
-        let (url, received) = text_recording_server(3).await;
-        let mut websocket = connect(&url).await;
-        let (events, _receiver) = EventBus::channel();
-
-        let restart = tokio::sync::watch::Sender::new(0u64);
-        let mut quiet = restart.subscribe();
-        let watched = tokio::sync::watch::Sender::new(vec![first, second]);
-        let mut friends = watched.subscribe();
-
-        let pumping = tokio::spawn(async move {
-            pump(
-                &mut websocket,
-                &events,
-                Duration::from_secs(60),
-                Uuid::nil(),
-                &mut quiet,
-                &mut friends,
-                || async { false },
-            )
-            .await
-            .map(|_| ())
-        });
-
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        watched.send_replace(vec![second, third]);
-
-        let texts = tokio::time::timeout(Duration::from_secs(10), received)
-            .await
-            .expect("server should see three packets")
-            .expect("server result");
-        let _ = pumping.await;
-
-        assert_eq!(texts[0]["type"], "SubscribePlayers");
-        assert_eq!(players_of(&texts[0]), HashSet::from([first, second]));
-        assert_eq!(texts[1]["type"], "UnsubscribePlayers");
-        assert_eq!(players_of(&texts[1]), HashSet::from([first]));
-        assert_eq!(texts[2]["type"], "SubscribePlayers");
-        assert_eq!(players_of(&texts[2]), HashSet::from([third]));
-    }
-
-    #[tokio::test]
-    async fn party_packets_reach_the_lobby_over_the_chat_socket() {
-        let party_id = Uuid::from_u128(7);
-        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
-        let port = listener.local_addr().expect("addr").port();
-
-        tokio::spawn(async move {
-            let (stream, _) = listener.accept().await.expect("accept");
-            let mut server = accept_async(stream).await.expect("handshake");
-            let packet =
-                format!(r#"{{"type":"PartyLeft","party_id":"{party_id}","reason":"left"}}"#);
-            server
-                .send(ServerMessage::Text(packet.into()))
-                .await
-                .expect("send");
-            let _ = server.close(None).await;
-        });
-
-        let mut lobby = party::subscribe();
-        let mut websocket = connect(&format!("ws://127.0.0.1:{port}/websocket")).await;
-        let (events, mut bus) = EventBus::channel();
-
-        let restart = tokio::sync::watch::Sender::new(0u64);
-        let mut quiet = restart.subscribe();
-        let watched = tokio::sync::watch::Sender::new(Vec::new());
-        let mut nobody = watched.subscribe();
-
-        tokio::time::timeout(
-            Duration::from_secs(10),
-            pump(
-                &mut websocket,
-                &events,
-                Duration::from_secs(60),
-                Uuid::nil(),
-                &mut quiet,
-                &mut nobody,
-                || async { false },
-            ),
-        )
-        .await
-        .expect("pump should end with the socket")
-        .expect("a clean close");
-
-        let received = tokio::time::timeout(Duration::from_secs(10), async {
-            loop {
-                if let party::LiveEvent::Packet(packet) = lobby.recv().await.expect("lobby event")
-                    && let party::PartyPacket::PartyLeft { party_id: id, .. } = *packet
-                    && id == party_id
-                {
-                    return id;
-                }
-            }
-        })
-        .await
-        .expect("the lobby should hear the packet");
-
-        assert_eq!(received, party_id);
-        assert!(bus.try_recv().is_err(), "party traffic stays off the chat bus");
-    }
-
-    #[test]
-    fn server_ids_are_random_20_byte_hex() {
-        let id = generate_server_id();
-        assert_eq!(id.len(), 40);
-        assert!(id.chars().all(|c| c.is_ascii_hexdigit()));
-        assert_ne!(id, generate_server_id());
-    }
-
-    #[test]
-    fn group_messages_reach_the_bus() {
-        let (events, mut receiver) = EventBus::channel();
-        let sender = Uuid::nil();
-
-        dispatch(
-            &events,
-            sender,
-            &format!(
-                r#"{{"type":"GroupMessageReceived","group_id":3,"message_id":9,"sender":"{sender}","content":"hey"}}"#
-            ),
-        );
-
-        match receiver
-            .try_recv()
-            .expect("an event should have been emitted")
-        {
-            golems_events::Event::Chat(ChatEvent::MessageReceived {
-                account,
-                group_id,
-                message_id,
-                content,
-                ..
-            }) => {
-                assert_eq!(account, sender);
-                assert_eq!(group_id, 3);
-                assert_eq!(message_id, 9);
-                assert_eq!(content, "hey");
-            }
-            other => panic!("unexpected event: {other:?}"),
-        }
-    }
-
-    #[test]
-    fn a_live_invite_keeps_its_id_and_status() {
-        let (events, mut receiver) = EventBus::channel();
-        let sender = Uuid::nil();
-
-        dispatch(
-            &events,
-            sender,
-            &format!(
-                r#"{{"type":"GroupMessageReceived","group_id":3,"message_id":9,"sender":"{sender}","content":"","session_invite_id":12,"session_invite_status":"pending"}}"#
-            ),
-        );
-
-        match receiver
-            .try_recv()
-            .expect("an event should have been emitted")
-        {
-            golems_events::Event::Chat(ChatEvent::MessageReceived {
-                invite_id,
-                invite_status,
-                ..
-            }) => {
-                assert_eq!(invite_id, Some(12));
-                assert_eq!(invite_status.as_deref(), Some("pending"));
-            }
-            other => panic!("unexpected event: {other:?}"),
-        }
-    }
-
-    #[test]
-    fn cosmetic_traffic_stays_off_the_bus() {
-        let (events, mut receiver) = EventBus::channel();
-
-        dispatch(
-            &events,
-            Uuid::nil(),
-            r#"{"type":"PlayerEmoteStopped","player":"00000000-0000-0000-0000-000000000000"}"#,
-        );
-
-        assert!(receiver.try_recv().is_err());
-    }
 }

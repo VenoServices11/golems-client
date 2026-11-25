@@ -12,6 +12,8 @@ use crate::theme::{colors, rounded, text_size};
 pub(super) use crate::components::{inset_border, use_player_name};
 
 pub(super) const LIST_WIDTH_PX: f32 = 320.;
+/// Messages, groups and parties aren't on Golem's Client's server yet; until they are, the panel shows friends only.
+pub(super) const MESSAGES: bool = false;
 pub(super) const ROW_RADIUS_PX: f32 = 8.;
 pub(super) const CARD_RADIUS_PX: f32 = 16.;
 pub(super) const CHIP_RADIUS_PX: f32 = 6.;

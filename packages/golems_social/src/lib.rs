@@ -1,4 +1,5 @@
 pub mod api;
+pub mod golems;
 pub mod instances;
 mod models;
 mod packets;
@@ -54,6 +55,10 @@ pub enum PlusError {
     #[error("Golem's Plus request failed (HTTP {status}): {body}")]
     Api { status: u16, body: String },
 
+    /// An answer from Golem's Client's own server, with a message to show as it is.
+    #[error("{message}")]
+    Server { status: u16, message: String },
+
     #[error("could not build the Golem's Plus client: {0}")]
     Client(String),
 
@@ -80,9 +85,9 @@ impl PlusError {
     #[must_use]
     pub fn status(&self) -> Option<u16> {
         match self {
-            Self::Api { status, .. } | Self::Request(RequestError::HttpStatus { status, .. }) => {
-                Some(*status)
-            }
+            Self::Api { status, .. }
+            | Self::Server { status, .. }
+            | Self::Request(RequestError::HttpStatus { status, .. }) => Some(*status),
             Self::Websocket(reqwest_websocket::Error::Handshake(
                 reqwest_websocket::HandshakeError::UnexpectedStatusCode(status),
             )) => Some(status.as_u16()),

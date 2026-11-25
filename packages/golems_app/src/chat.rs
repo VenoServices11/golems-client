@@ -32,10 +32,8 @@ pub fn chat_allowed(
     settings: &golems_core::settings::LauncherSettings,
     consent_declined: bool,
 ) -> bool {
-    !consent_declined
-        && !settings.declined_tos
-        && settings.accepted_tos_version > 0
-        && settings.accepted_privacy_version > 0
+    // Golem's Client has no terms to accept first: friends work unless they were turned off
+    !consent_declined && !settings.declined_tos
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

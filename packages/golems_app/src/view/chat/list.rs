@@ -59,9 +59,14 @@ impl Component for ListPane {
         let special_filter = use_state(|| SpecialFilter::All);
 
         let tab = self.tab;
-        let active_tab = match *tab.read() {
-            PanelTab::Special if !self.special_target => PanelTab::Chats,
-            tab => tab,
+        // Golem's Client: only friends until messages are on Golem's Client's server
+        let active_tab = if super::common::MESSAGES {
+            match *tab.read() {
+                PanelTab::Special if !self.special_target => PanelTab::Chats,
+                tab => tab,
+            }
+        } else {
+            PanelTab::Friends
         };
         let q = query.read().trim().to_lowercase();
 
@@ -134,9 +139,11 @@ impl Component for ListPane {
                     ),
             )
             .child(InvitesCard { view: self.view })
-            .child(tab_strip(active_tab, unread, incoming, special_unread, move |next| {
-                let mut tab = tab;
-                tab.set(next);
+            .maybe_child(super::common::MESSAGES.then(|| {
+                tab_strip(active_tab, unread, incoming, special_unread, move |next| {
+                    let mut tab = tab;
+                    tab.set(next);
+                })
             }))
             .maybe_child(self.error.clone().map(|error| ErrorBanner { error }))
             .child(
@@ -1396,10 +1403,12 @@ impl Component for FriendRow {
         let online = self.online;
         let mut view = self.view;
 
-        let activity = if online {
-            t("golems.chat.status.online")
+        // Golem's Client: what they're doing ("Playing on donutsmp.net", "In the launcher")
+        let activity: String = if online {
+            golems_social::golems::activity(player)
+                .unwrap_or_else(|| t("golems.chat.status.online").to_string())
         } else {
-            t("golems.chat.status.offline")
+            t("golems.chat.status.offline").to_string()
         };
 
         let open = dispatch.clone();
@@ -1407,19 +1416,23 @@ impl Component for FriendRow {
             let message = dispatch.clone();
             let remove = dispatch.clone();
             let block = dispatch.clone();
-            ContextMenu::new(x, y)
+            let mut context = ContextMenu::new(x, y)
                 .overlay_level(OVERLAY_MAX_LEVEL)
                 .title(name.clone())
-                .on_close(move |_| menu.set(None))
-                .action(
-                    IconType::MessageTextSquare01,
-                    t("golems.chat.friends.message"),
-                    move |()| {
-                        message.start_direct_message(player);
-                        view.set(PanelView::Chat);
-                    },
-                )
-                .separator()
+                .on_close(move |_| menu.set(None));
+            if super::common::MESSAGES {
+                context = context
+                    .action(
+                        IconType::MessageTextSquare01,
+                        t("golems.chat.friends.message"),
+                        move |()| {
+                            message.start_direct_message(player);
+                            view.set(PanelView::Chat);
+                        },
+                    )
+                    .separator();
+            }
+            context
                 .danger_action(
                     IconType::Trash01,
                     t("golems.chat.friends.remove"),
@@ -1460,9 +1473,17 @@ impl Component for FriendRow {
             .cursor(CursorIcon::Pointer)
             .on_pointer_over(move |_| hovered.set(true))
             .on_pointer_out(move |_| hovered.set(false))
-            .on_press(move |_| {
-                open.start_direct_message(player);
-                view.set(PanelView::Chat);
+            .on_press(move |e: Event<PressEventData>| {
+                if super::common::MESSAGES {
+                    open.start_direct_message(player);
+                    view.set(PanelView::Chat);
+                } else if let PressEventData::Mouse(m) = e.data() {
+                    // Golem's Client: a click shows what you can do with this friend
+                    menu.set(Some((
+                        m.global_location.x as f32,
+                        m.global_location.y as f32,
+                    )));
+                }
             })
             .on_secondary_down(move |e: Event<PressEventData>| {
                 if let PressEventData::Mouse(m) = e.data() {
