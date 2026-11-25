@@ -37,6 +37,7 @@ public final class GolemsClient implements ClientModInitializer {
         dev.golemsclient.badge.Badges.register();
         dev.golemsclient.friends.Friends.register();
         dev.golemsclient.friends.MessagePopups.register();
+        dev.golemsclient.friends.Capes.register();
         dev.golemsclient.friends.Friends.onNotice(message -> net.minecraft.client.Minecraft.getInstance().execute(() -> {
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             if (mc.screen instanceof dev.golemsclient.menu.MenuScreen menu) menu.notice(message);

@@ -26,7 +26,9 @@ enum class BodySlot(val serializedName: String, val displayName: String) {
 }
 
 object CapeResolver {
-    fun applyCape(playerId: UUID, profile: GameProfile, original: PlayerSkin): PlayerSkin = original
+    // Golem's Client: the lobby's players wear their Golem's Client capes too
+    fun applyCape(playerId: UUID, profile: GameProfile, original: PlayerSkin): PlayerSkin =
+        dev.golemsclient.friends.Capes.apply(playerId, original)
 }
 
 object LocalSkinOverride {

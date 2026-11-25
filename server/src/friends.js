@@ -30,6 +30,7 @@
  */
 
 import { messages, inbox, messagesCleanup } from "./messages.js";
+import { capes, capesOpen } from "./capes.js";
 
 const UUID = /^[0-9a-f]{32}$/;
 const NAME = /^[A-Za-z0-9_]{1,16}$/;
@@ -88,13 +89,16 @@ async function me(env, token, now) {
 
 /** Handles a /friends/... or /admin/friends/... request, or returns null for any other path. */
 export async function friends(path, env, body, now, helpers) {
-  if (!path.startsWith("/friends/") && !path.startsWith("/admin/friends/") && !path.startsWith("/messages/")) return null;
+  if (!["/friends/", "/admin/friends/", "/messages/", "/capes/", "/admin/capes/"].some((p) => path.startsWith(p))) return null;
   await ensure(env);
+  const open = await capesOpen(path, env, body, now, helpers);
+  if (open) return open;
   if (path === "/friends/login") return login(env, body, now);
   if (path === "/admin/friends/reset") return adminReset(env, body, helpers);
   const uuid = await me(env, body.token, now);
   if (!uuid) return fail("Sign in again.", 401, "login");
   if (path.startsWith("/messages/")) return messages(path, env, body, now, uuid);
+  if (path.startsWith("/capes/")) return capes(path, env, body, now, uuid, helpers);
   switch (path) {
     case "/friends/state": return state(env, uuid, body, now, helpers);
     case "/friends/add": return add(env, uuid, body, now);

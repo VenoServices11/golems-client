@@ -41,6 +41,7 @@ final class WardrobePage {
     void open() {
         view = View.HOME;
         scroll = 0f;
+        capesAsked = false;
         if (m instanceof MainMenu) LobbyBridge.wardrobe(true);
         if (SkinService.profile() == null) SkinService.refresh();
         SkinService.Profile p = SkinService.profile();
@@ -82,8 +83,10 @@ final class WardrobePage {
         for (String[] slot : MAIN) {
             if (slot[1].equals("cape")) {
                 SkinService.Cape cape = activeCape(p);
-                y = slotRow(x, y, x1 - x0 - 24f, "Capes", cape == null ? (p != null ? "None" : SkinService.problem() != null ? "Unavailable" : "Loading...") : cape.alias(), cape, true,
-                        () -> show(View.CAPES));
+                String ours = dev.golemsclient.friends.Capes.wearing();
+                String sub = ours != null && !ours.isEmpty() ? dev.golemsclient.friends.Capes.name(ours)
+                        : cape == null ? (p != null ? "None" : SkinService.problem() != null ? "Unavailable" : "Loading...") : cape.alias();
+                y = slotRow(x, y, x1 - x0 - 24f, "Capes", sub, ours != null && !ours.isEmpty() ? null : cape, true, () -> show(View.CAPES));
             } else {
                 y = slotRow(x, y, x1 - x0 - 24f, slot[0], "Coming soon", null, false, null);
             }
@@ -143,6 +146,11 @@ final class WardrobePage {
         y += 22f;
 
         SkinService.Profile p = SkinService.profile();
+        if (view == View.CAPES) {
+            // Golem's Client's capes don't need the Mojang profile
+            drawCapes(p, x, y, iw, y1);
+            return;
+        }
         if (p == null) {
             if (SkinService.loading() || SkinService.problem() == null) {
                 m.text(Face.REGULAR, "Loading your skin and capes...", x, y + 4f, 7f, MenuScreen.TEXT_2, Align.LEFT);
@@ -228,20 +236,81 @@ final class WardrobePage {
         endList();
     }
 
+    private boolean capesAsked;
+
     private void drawCapes(SkinService.Profile p, float x, float y, float iw, float y1) {
-        SkinService.Cape active = activeCape(p);
-        y = capeRow(x, y, iw, null, "No cape", "Hide your cape", active == null);
-        if (p.capes().isEmpty()) {
-            wrap("This account has no Mojang capes. Capes from events and Minecraft purchases show up here.", x, y + 4f, iw, MenuScreen.TEXT_2);
-            return;
+        List<dev.golemsclient.friends.Capes.Cape> ours = dev.golemsclient.friends.Capes.mine();
+        if (!capesAsked) {
+            capesAsked = true;
+            dev.golemsclient.friends.Capes.refresh(m::showToast);
         }
-        beginList(y, y1 - 10f, p.capes().size() * 36f);
+        String wearing = dev.golemsclient.friends.Capes.wearing();
+        int mojang = p == null ? 0 : p.capes().size();
+        float content = 14f + (ours == null ? 20f : (ours.size() + 1) * 36f) + 18f + (p == null || mojang == 0 ? 30f : (mojang + 1) * 36f);
+        beginList(y, y1 - 10f, content);
         float cy = y - scroll;
-        for (SkinService.Cape cape : p.capes()) {
-            if (cy + 34f >= listY0 && cy <= listY1) capeRow(x, cy, iw, cape, cape.alias(), "Mojang cape", cape.active());
+        m.text(Face.MONO, "GOLEM'S CLIENT CAPES", x, cy + 2f, 5.5f, MenuScreen.TEXT_3, Align.LEFT);
+        cy += 14f;
+        if (ours == null) {
+            m.text(Face.REGULAR, "Loading your capes...", x, cy + 4f, 7f, MenuScreen.TEXT_2, Align.LEFT);
+            cy += 20f;
+        } else {
+            for (dev.golemsclient.friends.Capes.Cape c : ours) {
+                String sub = switch (c.kind()) {
+                    case "owner" -> "Only you · Owner";
+                    case "gift" -> "Given to you";
+                    default -> "Free for everyone with Golem's Client";
+                };
+                if (cy + 34f >= listY0 && cy <= listY1) {
+                    golemsCapeRow(x, cy, iw, c.id(), c.name(), sub, c.id().equals(wearing), () ->
+                            dev.golemsclient.friends.Capes.wear(c.id(), m::showToast));
+                }
+                cy += 36f;
+            }
+            if (cy + 34f >= listY0 && cy <= listY1) {
+                golemsCapeRow(x, cy, iw, null, "No Golem's Client cape", "Show your Mojang cape, or none", wearing == null || wearing.isEmpty(),
+                        () -> dev.golemsclient.friends.Capes.wear("", m::showToast));
+            }
             cy += 36f;
         }
+        cy += 4f;
+        m.text(Face.MONO, "MOJANG CAPES", x, cy + 2f, 5.5f, MenuScreen.TEXT_3, Align.LEFT);
+        cy += 14f;
+        if (p == null) {
+            m.text(Face.REGULAR, SkinService.problem() == null ? "Loading your Mojang capes..." : "Couldn't read your Mojang capes.", x, cy + 4f, 7f,
+                    MenuScreen.TEXT_2, Align.LEFT);
+        } else if (mojang == 0) {
+            m.text(Face.REGULAR, "This account has no Mojang capes.", x, cy + 4f, 7f, MenuScreen.TEXT_2, Align.LEFT);
+        } else {
+            SkinService.Cape active = activeCape(p);
+            if (cy + 34f >= listY0 && cy <= listY1) capeRow(x, cy, iw, null, "No Mojang cape", "Hide your Mojang cape", active == null);
+            cy += 36f;
+            for (SkinService.Cape cape : p.capes()) {
+                if (cy + 34f >= listY0 && cy <= listY1) capeRow(x, cy, iw, cape, cape.alias(), "Mojang cape", cape.active());
+                cy += 36f;
+            }
+        }
         endList();
+    }
+
+    private void golemsCapeRow(float x, float y, float iw, String id, String name, String sub, boolean on, Runnable wear) {
+        float h = 32f;
+        boolean over = m.inside(x, Math.max(y, listY0), x + iw, Math.min(y + h, listY1));
+        float hv = m.anim("gcape:" + name, over);
+        m.rect(x, y, x + iw, y + h, 5f, on ? 0x26E5484D : MenuScreen.mix(0x0AFFFFFF, 0x1AFFFFFF, hv));
+        if (on) m.outline(x, y, x + iw, y + h, 5f, 0x80E5484D);
+        if (id != null) {
+            byte[] png = dev.golemsclient.friends.Capes.png(id);
+            GuiTexture t = png == null ? null : Textures.image("gcape:" + id, png, true, 0f);
+            if (t != null) {
+                float ch = 24f, cw = ch * 10f / 16f, cx = x + 8f, cyy = y + 4f;
+                Overlay.texture(t, cx * m.u, cyy * m.u, (cx + cw) * m.u, (cyy + ch) * m.u, 1f / 64f, 1f / 32f, 11f / 64f, 17f / 32f, m.c(0xFFFFFFFF));
+            }
+        }
+        m.text(Face.SEMIBOLD, m.fit(Face.SEMIBOLD, name, 7.5f, iw - 60f), x + 30f, y + 7f, 7.5f, MenuScreen.TEXT, Align.LEFT);
+        m.text(Face.REGULAR, m.fit(Face.REGULAR, sub, 6f, iw - 60f), x + 30f, y + 18f, 6f, MenuScreen.TEXT_2, Align.LEFT);
+        if (on) m.text(Face.MONO, "ON", x + iw - 10f, y + h / 2f - 3f, 5.5f, MenuScreen.ACCENT, Align.RIGHT);
+        if (!on && over) m.hit(x, Math.max(y, listY0), x + iw, Math.min(y + h, listY1), wear);
     }
 
     private float capeRow(float x, float y, float iw, SkinService.Cape cape, String name, String sub, boolean on) {
