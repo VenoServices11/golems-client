@@ -4,19 +4,19 @@
       "fabric": [
         {
           "path": "/golems/bundles/generated/hud-1.21.11-fabric.mrpack",
-          "sha1": "ef889dabd589c1fdabe3844ae50e73e235eb598a"
+          "sha1": "62691a1cf5b33a00da4d613923ca73a12a226f5c"
         },
         {
           "path": "/golems/bundles/generated/performance-1.21.11-fabric.mrpack",
-          "sha1": "e05d5dc875b2485a2ee8b572a2ff0368b92cc692"
+          "sha1": "0a78ea3b4a2e2a8e20dace1d12da57bcbf807e51"
         },
         {
           "path": "/golems/bundles/generated/qol-1.21.11-fabric.mrpack",
-          "sha1": "997eb2401b0a977e63862be5850d48b16d21d20b"
+          "sha1": "0d0d538a195c7d803cf26b15417122f39087673a"
         },
         {
           "path": "/golems/bundles/generated/utility-1.21.11-fabric.mrpack",
-          "sha1": "357d72ee8be27a7d7fbd45ad3c54de5a9f850d27"
+          "sha1": "b8fb67ca45b87db434d74b0ffec6c6be1786eaec"
         }
       ]
     }
