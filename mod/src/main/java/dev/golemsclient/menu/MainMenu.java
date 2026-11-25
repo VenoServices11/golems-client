@@ -103,6 +103,13 @@ public final class MainMenu extends MenuScreen {
     private static boolean devSocial;
     private static int devTab = -1;
 
+    private static Integer devChat;
+
+    /** Dev screenshots only: opens this chat in the Social panel. */
+    public static void devChat(Integer chat) {
+        devChat = chat;
+    }
+
     public static void devSocial(boolean open) {
         devSocial = open;
     }
@@ -254,6 +261,10 @@ public final class MainMenu extends MenuScreen {
         LobbyBridge.accent(ACCENT);
         if (dev.golemsclient.DevShots.ON) {
             if (devSocial && !social.open()) social.show();
+            if (devChat != null) {
+                social.showChats(devChat);
+                devChat = null;
+            }
             else if (!devSocial && social.open()) social.close();
             if (devTab >= 0) {
                 openTab(devTab);
@@ -553,11 +564,12 @@ public final class MainMenu extends MenuScreen {
         text(Face.REGULAR, "for friends", kx + kw + 4f, sy0 + 11f - 7f * 0.6f, 7f, TEXT_2, Align.LEFT);
         dev.golemsclient.friends.Friends.State fs = dev.golemsclient.friends.Friends.state();
         if (fs != null) {
-            int asks = fs.incoming().size(), on = fs.online();
-            String what = asks > 0 ? asks + (asks == 1 ? " request" : " requests") : on + " online";
+            int asks = fs.incoming().size(), on = fs.online(), unread = dev.golemsclient.friends.Chats.unread();
+            String what = unread > 0 ? unread + (unread == 1 ? " new chat" : " new chats")
+                    : asks > 0 ? asks + (asks == 1 ? " request" : " requests") : on + " online";
             float ww = textW(Face.MEDIUM, what, 6.5f);
-            text(Face.MEDIUM, what, x1 - 10f, sy0 + 11f - 6.5f * 0.6f, 6.5f, asks > 0 ? ACCENT : TEXT_2, Align.RIGHT);
-            if (asks == 0 && on > 0) rect(x1 - 16f - ww, sy0 + 9f, x1 - 12f - ww, sy0 + 13f, 2f, LIVE);
+            text(Face.MEDIUM, what, x1 - 10f, sy0 + 11f - 6.5f * 0.6f, 6.5f, unread > 0 || asks > 0 ? ACCENT : TEXT_2, Align.RIGHT);
+            if (unread == 0 && asks == 0 && on > 0) rect(x1 - 16f - ww, sy0 + 9f, x1 - 12f - ww, sy0 + 13f, 2f, LIVE);
         }
         hit(x0, sy0, x1, sy1, social::show);
 

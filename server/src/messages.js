@@ -18,7 +18,8 @@
  *   POST /messages/delete  { token, id, message }             -> { ok }         (your own messages)
  *   POST /messages/read    { token, id, message }             -> { ok }
  *
- * The shapes (GroupSummary, GroupMessage) are the ones the launcher's chat already reads. The friends list request
+ * The shapes (GroupSummary, GroupMessage) are the ones the launcher's chat already reads (a GroupSummary also has
+ * `names`: the members' Minecraft names, by UUID). The friends list request
  * (POST /friends/state) also carries { inbox: { latest, unread }, messages: [new since the client's `since`] }.
  */
 
@@ -77,13 +78,16 @@ async function summaries(env, uuid, ids) {
   const marks = ids.map(() => "?").join(",");
   const [groups, members, lasts] = await env.DB.batch([
     env.DB.prepare(`SELECT g.id, g.kind, g.name, g.last_at, m.last_read FROM m_groups g JOIN m_members m ON m.group_id = g.id AND m.uuid = ? WHERE g.id IN (${marks})`).bind(uuid, ...ids),
-    env.DB.prepare(`SELECT group_id, uuid FROM m_members WHERE group_id IN (${marks})`).bind(...ids),
+    env.DB.prepare(`SELECT m.group_id, m.uuid, a.name FROM m_members m LEFT JOIN f_accounts a ON a.uuid = m.uuid WHERE m.group_id IN (${marks})`).bind(...ids),
     env.DB.prepare(`SELECT m.* FROM m_messages m JOIN (SELECT group_id, MAX(id) AS id FROM m_messages WHERE group_id IN (${marks}) GROUP BY group_id) l ON l.id = m.id`).bind(...ids),
   ]);
   const byGroup = new Map();
+  const names = new Map();
   for (const m of members.results) {
     if (!byGroup.has(m.group_id)) byGroup.set(m.group_id, []);
     byGroup.get(m.group_id).push(m.uuid);
+    if (!names.has(m.group_id)) names.set(m.group_id, {});
+    if (m.name) names.get(m.group_id)[m.uuid] = m.name;
   }
   const lastBy = new Map(lasts.results.map((m) => [m.group_id, m]));
   return groups.results
@@ -95,6 +99,7 @@ async function summaries(env, uuid, ids) {
         kind: g.kind,
         name: g.name || null,
         members: byGroup.get(g.id) || [],
+        names: names.get(g.id) || {},
         last_message: last ? { content: last.content, sender: last.sender, sent_at: iso(last.at) } : null,
         unread: !!last && last.id > g.last_read && last.sender !== uuid,
         special: false,

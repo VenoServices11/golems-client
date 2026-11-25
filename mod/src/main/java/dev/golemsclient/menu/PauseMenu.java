@@ -80,6 +80,13 @@ public final class PauseMenu extends MenuScreen {
     }
 
     /** Dev screenshots only: switches the open pause menu to a tab. */
+    /** Opens the pause menu on the chats (and this chat, if given): the "Open messages" key. */
+    public static void messages(Integer chat) {
+        PauseMenu menu = new PauseMenu();
+        net.minecraft.client.Minecraft.getInstance().setScreen(menu);
+        menu.social.showChats(chat);
+    }
+
     public static void devPage(int index) {
         if (net.minecraft.client.Minecraft.getInstance().screen instanceof PauseMenu p) p.setPage(index);
     }

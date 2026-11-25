@@ -469,6 +469,25 @@ pub async fn add(account: &MinecraftAccount, player: Uuid) -> Result<(), PlusErr
 
 // ------------------------------------------------------------------ messages
 
+/// Members' names that come with chats (`names`: { uuid: name }), for showing names in the chat.
+fn learn_names(value: &Value) {
+    let mut learn = |names: &Value| {
+        if let Some(names) = names.as_object() {
+            for (id, name) in names {
+                if let Some(name) = name.as_str() {
+                    remember_name(parse_uuid(id), name);
+                }
+            }
+        }
+    };
+    learn(&value["names"]);
+    if let Some(groups) = value["groups"].as_array() {
+        for group in groups {
+            learn(&group["names"]);
+        }
+    }
+}
+
 /// A request whose answer is read as `T`.
 pub async fn call_as<T: serde::de::DeserializeOwned>(
     account: &MinecraftAccount,
@@ -476,6 +495,7 @@ pub async fn call_as<T: serde::de::DeserializeOwned>(
     body: Value,
 ) -> Result<T, PlusError> {
     let value = call(account, path, body).await?;
+    learn_names(&value);
     serde_json::from_value(value)
         .map_err(|err| PlusError::Client(format!("could not read the answer to {path}: {err}")))
 }

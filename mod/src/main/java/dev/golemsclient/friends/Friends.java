@@ -44,7 +44,8 @@ public final class Friends {
     private static final Pattern IPV4 = Pattern.compile("^\\d{1,3}(\\.\\d{1,3}){3}$");
     private static final Pattern SAFE = Pattern.compile("^[A-Za-z0-9 ._:'-]{1,64}$");
 
-    private static final long POLL_MS = 60_000L, POLL_FAST_MS = 12_000L, PRESENCE_MS = 120_000L;
+    // every 30 seconds for new messages, every 5 while the friends panel is open
+    private static final long POLL_MS = 30_000L, POLL_FAST_MS = 5_000L, PRESENCE_MS = 120_000L;
     private static final long RETRY_MS = 30_000L, LOCKED_RETRY_MS = 10 * 60_000L;
 
     public record Friend(UUID uuid, String name, long since, boolean owner, String state, String server, String mc, long lastSeen) {
@@ -120,7 +121,7 @@ public final class Friends {
     public static void watch() {
         long now = System.currentTimeMillis();
         boolean wasSlow = fastUntil < now;
-        fastUntil = now + 20_000L;
+        fastUntil = now + 8_000L;
         if (wasSlow) nextPoll = Math.min(nextPoll, now);
     }
 
@@ -130,6 +131,7 @@ public final class Friends {
         if (dev.golemsclient.DevShots.ON) {
             // dev screenshots: made-up friends, nothing sent
             if (state == null) state = sample();
+            if (mc.getUser() != null) Chats.devSample(mc.getUser().getProfileId());
             return;
         }
         long now = System.currentTimeMillis();
@@ -170,15 +172,18 @@ public final class Friends {
             presence.addProperty("mc", mcVersion);
             body.add("presence", presence);
         }
+        long since = Chats.since();
+        if (since >= 0) body.addProperty("since", since);
         JsonObject answer = signedIn(me, name, "/friends/state", body);
         State next = parse(answer);
+        Chats.polled(answer, me);
         announceNew(next);
         state = next;
         problem = null;
     }
 
     /** A request with the session token, signing in first (or again) when needed. */
-    private static JsonObject signedIn(UUID me, String name, String path, JsonObject body) throws Exception {
+    static JsonObject signedIn(UUID me, String name, String path, JsonObject body) throws Exception {
         if (token == null || !me.equals(tokenFor)) login(me, name);
         body.addProperty("token", token);
         Answer a = post(path, body);
@@ -299,11 +304,11 @@ public final class Friends {
         });
     }
 
-    private interface Action {
+    interface Action {
         String run(UUID me, String name) throws Exception;
     }
 
-    private static void action(Consumer<String> done, Action action) {
+    static void action(Consumer<String> done, Action action) {
         Minecraft mc = Minecraft.getInstance();
         UUID me = mc.getUser().getProfileId();
         String name = mc.getUser().getName();
