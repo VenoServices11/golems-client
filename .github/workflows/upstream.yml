@@ -1,0 +1,54 @@
+name: Keep up with OneClient
+
+# Every Monday: Golem's Client's mod bundles take the same mod updates as OneClient's (saved to the data branch, so
+# the launcher picks them up), and the "OneClient updates" issue lists OneClient's new code changes to bring over.
+on:
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: upstream
+  cancel-in-progress: false
+
+jobs:
+  bundles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: data
+          path: data
+      - name: Take OneClient's bundle updates
+        run: python3 .github/scripts/sync_bundles.py data > changes.md
+      - name: Save them to the data branch
+        run: |
+          cat changes.md >> "$GITHUB_STEP_SUMMARY"
+          cd data
+          if [ -z "$(git status --porcelain)" ]; then echo "Nothing changed."; exit 0; fi
+          git config user.name "VenoServices11"
+          git config user.email "224972591+VenoServices11@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Bundles: OneClient's mod updates" -m "$(cat ../changes.md)"
+          git push -q origin HEAD:data
+
+  code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: List OneClient's new code changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/upstream_changes.py > report.md
+      - name: Update the "OneClient updates" issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          n=$(gh issue list --state open --search "OneClient updates in:title" --json number,title --jq '.[] | select(.title=="OneClient updates") | .number' | head -1)
+          if [ -n "$n" ]; then gh issue edit "$n" --body-file report.md; else gh issue create --title "OneClient updates" --body-file report.md; fi

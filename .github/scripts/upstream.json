@@ -1,0 +1,4 @@
+{
+  "Polyfrost/OneLauncher": {"what": "The launcher (OneClient)", "commit": "1a566f0"},
+  "Polyfrost/PolyPlus": {"what": "The in-game mod (Poly+, the base of Golem's Client's mod)", "commit": "36f29af"}
+}

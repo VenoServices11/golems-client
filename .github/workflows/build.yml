@@ -11,6 +11,8 @@ on:
       - mod/**
       - .github/workflows/mod.yml
       - .github/workflows/devshots.yml
+      - .github/workflows/upstream.yml
+      - .github/scripts/**
   workflow_dispatch:
 
 concurrency:
