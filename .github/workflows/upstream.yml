@@ -1,10 +1,12 @@
 name: Keep up with OneClient
 
-# Every Monday: Golem's Client's mod bundles take the same mod updates as OneClient's (saved to the data branch, so
-# the launcher picks them up), and the "OneClient updates" issue lists OneClient's new code changes to bring over.
+# Every day: Golem's Client's mod bundles take OneClient's mod updates and any newer versions on Modrinth (saved to
+# the data branch, so the launcher picks them up). Every Monday also: the "OneClient updates" issue lists OneClient's
+# new code changes to bring over.
 on:
   schedule:
-    - cron: '23 5 * * 1'
+    - cron: '23 5 * * *'   # the bundles, daily
+    - cron: '17 5 * * 1'   # the code changes, Mondays
   workflow_dispatch:
 
 permissions:
@@ -17,6 +19,7 @@ concurrency:
 
 jobs:
   bundles:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '23 5 * * *'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,10 +37,12 @@ jobs:
           git config user.name "VenoServices11"
           git config user.email "224972591+VenoServices11@users.noreply.github.com"
           git add -A
-          git commit -q -m "Bundles: OneClient's mod updates" -m "$(cat ../changes.md)"
+          git commit -q -m "Bundles: mod updates" -m "$(cat ../changes.md)"
           git push -q origin HEAD:data
 
   code:
+    # Mondays (and when run by hand)
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 5 * * 1'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
