@@ -9,7 +9,9 @@
  * e.g. on a new computer; its friends stay.
  *
  *   POST /friends/login    { uuid, name, key? }         -> { token, uuid, name, key? }  (key: only when it's new)
- *   POST /friends/state    { token, presence? }         -> { me, friends, incoming, outgoing, blocked }
+ *   POST /friends/state    { token, presence?, since? } -> { me, friends, incoming, outgoing, blocked, inbox, messages? }
+ *        inbox: { latest, unread } (newest message id in your chats, chats with unread messages);
+ *        messages: the ones newer than `since` (a message id), when it's sent. Messages: see messages.js
  *        presence: { source: "game"|"launcher", server?, mc? }   saved when sent (clients send it every few minutes)
  *   POST /friends/add      { token, name, uuid? }       -> { ok, friends, name }  (friends: true when they had asked you;
  *                                                          uuid: the name's account from Mojang, checked if sent)
@@ -26,6 +28,8 @@
  * Stored: Minecraft UUIDs and names, the hash of each account's key, friends, requests, blocks, and for a few
  * minutes what each player is doing (launcher or game, the server's address if they share it, the game version).
  */
+
+import { messages, inbox, messagesCleanup } from "./messages.js";
 
 const UUID = /^[0-9a-f]{32}$/;
 const NAME = /^[A-Za-z0-9_]{1,16}$/;
@@ -84,12 +88,13 @@ async function me(env, token, now) {
 
 /** Handles a /friends/... or /admin/friends/... request, or returns null for any other path. */
 export async function friends(path, env, body, now, helpers) {
-  if (!path.startsWith("/friends/") && !path.startsWith("/admin/friends/")) return null;
+  if (!path.startsWith("/friends/") && !path.startsWith("/admin/friends/") && !path.startsWith("/messages/")) return null;
   await ensure(env);
   if (path === "/friends/login") return login(env, body, now);
   if (path === "/admin/friends/reset") return adminReset(env, body, helpers);
   const uuid = await me(env, body.token, now);
   if (!uuid) return fail("Sign in again.", 401, "login");
+  if (path.startsWith("/messages/")) return messages(path, env, body, now, uuid);
   switch (path) {
     case "/friends/state": return state(env, uuid, body, now, helpers);
     case "/friends/add": return add(env, uuid, body, now);
@@ -187,7 +192,9 @@ async function state(env, uuid, body, now, helpers) {
     uuid: r.uuid, name: r.name || null, since: r.since, owner: owners.has(r.uuid), status: status(r, now),
   }));
   const me0 = mine.results[0] || {};
+  const chats = await inbox(env, uuid, body.since);
   return json({
+    ...chats,
     me: { uuid, name: me0.name || null, shareServer: me0.share_server !== 0 },
     friends: friendsOut,
     incoming: incoming.results.map((r) => ({ id: r.id, uuid: r.uuid, name: r.name || null, at: r.at })),
@@ -305,4 +312,5 @@ export async function friendsCleanup(env, now) {
     env.DB.prepare("DELETE FROM f_presence WHERE seen < ?").bind(now - 2 * ONLINE_FOR),
     env.DB.prepare("DELETE FROM f_sessions WHERE expires < ?").bind(now),
   ]);
+  await messagesCleanup(env, now);
 }

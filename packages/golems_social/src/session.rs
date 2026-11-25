@@ -15,7 +15,7 @@ use crate::{
 
 const MOJANG_JOIN_URL: &str = "https://sessionserver.mojang.com/session/minecraft/join";
 
-const POLL_INTERVAL: Duration = Duration::from_secs(20);
+const POLL_INTERVAL: Duration = Duration::from_secs(10);
 const PRESENCE_INTERVAL: Duration = Duration::from_secs(120);
 
 const RECONNECT_DELAY: Duration = Duration::from_secs(15);
@@ -153,6 +153,8 @@ async fn run_session(
     let account_id = account.id;
     let mut previous: Option<golems::State> = None;
     let mut presence_at: Option<Instant> = None;
+    // the newest message id seen; the server sends the ones after it
+    let mut since: Option<i64> = None;
 
     loop {
         if plus_blocked() || !social_allowed() || account_changed(&client.auth, account_id).await {
@@ -163,7 +165,21 @@ async fn run_session(
 
         let send_presence = !rest::invisible()
             && presence_at.is_none_or(|at| at.elapsed() >= PRESENCE_INTERVAL);
-        let state = golems::fetch_state(account, send_presence).await?;
+        let state = golems::fetch_state(account, send_presence, since).await?;
+        if since.is_some() {
+            for message in &state.messages {
+                client.events.chat(ChatEvent::MessageReceived {
+                    account: account_id,
+                    group_id: message.group_id,
+                    message_id: message.id,
+                    sender: message.sender,
+                    content: message.content.clone(),
+                    invite_id: None,
+                    invite_status: None,
+                });
+            }
+        }
+        since = Some(since.unwrap_or(0).max(state.inbox.latest));
         if send_presence {
             presence_at = Some(Instant::now());
         }

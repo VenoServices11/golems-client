@@ -172,7 +172,7 @@ impl Component for SocialPanel {
             .content(Content::Flex)
             .color(colors::fg_primary());
 
-        let body = if social_tab == SocialTab::Party && super::common::MESSAGES {
+        let body = if social_tab == SocialTab::Party && super::common::PARTIES {
             PartyTab.into_element()
         } else if self.expanded {
             root.child(list).child(detail).into_element()
@@ -196,7 +196,7 @@ impl Component for SocialPanel {
                 username,
                 connected: chat.connected,
             })
-            .maybe_child(super::common::MESSAGES.then(|| social_tabs(social_tab)))
+            .maybe_child(super::common::PARTIES.then(|| social_tabs(social_tab)))
             .child(
                 rect()
                     .width(Size::fill())

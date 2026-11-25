@@ -39,6 +39,27 @@ pub struct State {
     pub outgoing: Vec<RequestRow>,
     #[serde(default)]
     pub blocked: Vec<BlockedRow>,
+    #[serde(default)]
+    pub inbox: Inbox,
+    /// Messages newer than the `since` that was sent.
+    #[serde(default)]
+    pub messages: Vec<NewMessage>,
+}
+
+#[derive(Deserialize, Clone, Debug, Default)]
+pub struct Inbox {
+    #[serde(default)]
+    pub latest: i64,
+    #[serde(default)]
+    pub unread: i64,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct NewMessage {
+    pub id: i64,
+    pub group_id: i32,
+    pub sender: Uuid,
+    pub content: String,
 }
 
 #[derive(Deserialize, Clone, Debug, Default)]
@@ -275,11 +296,19 @@ fn forget_state() {
     }
 }
 
-/// The friends list, sending what this launcher is doing when `presence` is set.
-pub async fn fetch_state(account: &MinecraftAccount, presence: bool) -> Result<State, PlusError> {
+/// The friends list, sending what this launcher is doing when `presence` is set, and the messages newer than
+/// `since` (a message id).
+pub async fn fetch_state(
+    account: &MinecraftAccount,
+    presence: bool,
+    since: Option<i64>,
+) -> Result<State, PlusError> {
     let mut body = json!({});
     if presence {
         body["presence"] = json!({ "source": "launcher" });
+    }
+    if let Some(since) = since {
+        body["since"] = json!(since);
     }
     let value = call(account, "/friends/state", body).await?;
     let state: State = serde_json::from_value(value)
@@ -298,7 +327,7 @@ pub async fn state(account: &MinecraftAccount) -> Result<State, PlusError> {
     {
         return Ok(state.clone());
     }
-    fetch_state(account, false).await
+    fetch_state(account, false, None).await
 }
 
 fn remember(account: Uuid, state: &State) {
@@ -438,11 +467,27 @@ pub async fn add(account: &MinecraftAccount, player: Uuid) -> Result<(), PlusErr
     .map(drop)
 }
 
-/// The messages part of the panel isn't on Golem's Client's server yet.
-#[must_use]
-pub fn messages_not_yet() -> PlusError {
-    PlusError::Server {
-        status: 501,
-        message: "Messages are coming in a later update.".into(),
-    }
+// ------------------------------------------------------------------ messages
+
+/// A request whose answer is read as `T`.
+pub async fn call_as<T: serde::de::DeserializeOwned>(
+    account: &MinecraftAccount,
+    path: &str,
+    body: Value,
+) -> Result<T, PlusError> {
+    let value = call(account, path, body).await?;
+    serde_json::from_value(value)
+        .map_err(|err| PlusError::Client(format!("could not read the answer to {path}: {err}")))
+}
+
+#[derive(Deserialize)]
+pub struct Groups<T> {
+    #[serde(default = "Vec::new")]
+    pub groups: Vec<T>,
+}
+
+#[derive(Deserialize)]
+pub struct Messages<T> {
+    #[serde(default = "Vec::new")]
+    pub messages: Vec<T>,
 }
