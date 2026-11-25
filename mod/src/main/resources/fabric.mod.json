@@ -21,7 +21,8 @@
   },
   "mixins": [
     "golemsclient.mixins.json",
-    "golemsclient-lobby.mixins.json"
+    "golemsclient-lobby.mixins.json",
+    "golemsclient-oneconfig.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.16.0",

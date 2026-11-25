@@ -230,7 +230,7 @@ final class SetupPage {
         header(x, "Gameplay", "How you play");
         Options o = Minecraft.getInstance().options;
         float px = x + 22f, iw = CW - 44f, y = y0 + 56f;
-        float half = (iw - 8f) / 2f, h = 60f;
+        float half = (iw - 8f) / 2f, h = 68f;
         switchCard(px, y, half, h, "Toggle sprint", "Press sprint once instead of holding it", o.toggleSprint().get(),
                 () -> o.toggleSprint().set(!o.toggleSprint().get()));
         switchCard(px + half + 8f, y, half, h, "Toggle sneak", "Press sneak once instead of holding it", o.toggleCrouch().get(),
@@ -239,34 +239,6 @@ final class SetupPage {
         switchCard(px, y, half, h, "View bobbing", "The camera sways as you walk", o.bobView().get(),
                 () -> o.bobView().set(!o.bobView().get()));
         fovCard(px + half + 8f, y, half, h, o);
-        y += h + 8f;
-        // the mod menu's key
-        m.text(Face.SEMIBOLD, "Mod menu key", px, y + 3f, 7.5f, MenuScreen.TEXT, Align.LEFT);
-        m.text(Face.REGULAR, "Opens Golem's Client's mod menu in game", px, y + 13f, 6f, MenuScreen.TEXT_2, Align.LEFT);
-        float bw = 110f, bx1 = px + iw, bx0 = bx1 - bw;
-        boolean over = m.inside(bx0, y + 1f, bx1, y + 21f);
-        float hv = m.anim("menukey", over || capturingKey);
-        m.rect(bx0, y + 1f, bx1, y + 21f, 5f, capturingKey ? 0x33E5484D : MenuScreen.mix(0x0FFFFFFF, 0x24FFFFFF, hv));
-        m.outline(bx0, y + 1f, bx1, y + 21f, 5f, capturingKey ? MenuScreen.alpha(MenuScreen.ACCENT, 0.9f) : MenuScreen.LINE);
-        String label = capturingKey ? "Press a key..." : GolemsMenuKey.key() == null ? "Right Shift" : GolemsMenuKey.key().getTranslatedKeyMessage().getString();
-        m.text(Face.MEDIUM, label, (bx0 + bx1) / 2f, y + 11f - 7f * 0.6f, 7f, MenuScreen.TEXT, Align.CENTER);
-        m.hit(bx0, y + 1f, bx1, y + 21f, () -> capturingKey = !capturingKey);
-    }
-
-    private boolean capturingKey;
-
-    /** Waiting for the mod menu's key. */
-    boolean capturing() {
-        return capturingKey;
-    }
-
-    /** The key pressed while waiting: it becomes the mod menu's key (Esc keeps the old one). */
-    void captureKey(net.minecraft.client.input.KeyEvent event) {
-        capturingKey = false;
-        if (event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE || GolemsMenuKey.key() == null) return;
-        GolemsMenuKey.key().setKey(com.mojang.blaze3d.platform.InputConstants.getKey(event));
-        net.minecraft.client.KeyMapping.resetMapping();
-        Minecraft.getInstance().options.save();
     }
 
     private void switchCard(float x, float y, float cw, float h, String title, String sub, boolean on, Runnable flip) {

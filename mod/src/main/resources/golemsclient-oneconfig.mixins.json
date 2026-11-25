@@ -1,0 +1,15 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "dev.golemsclient.mixin.oneconfig",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "OneConfigAccentMixin",
+    "OneConfigIconMixin",
+    "OneConfigTextMixin",
+    "OneConfigVersionMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

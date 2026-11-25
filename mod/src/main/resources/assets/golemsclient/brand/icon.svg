@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="195 151 900 900" width="80" height="80">
+  <defs>
+    <linearGradient id="top" gradientUnits="userSpaceOnUse" x1="440" y1="0" x2="930" y2="0">
+      <stop offset="0" stop-color="#5A0002"/>
+      <stop offset="1" stop-color="#B6000A"/>
+    </linearGradient>
+    <linearGradient id="face" gradientUnits="userSpaceOnUse" x1="360" y1="560" x2="640" y2="900">
+      <stop offset="0" stop-color="#5A0002"/>
+      <stop offset="0.5" stop-color="#8E0006"/>
+      <stop offset="1" stop-color="#D80A12"/>
+    </linearGradient>
+    <linearGradient id="leg" gradientUnits="userSpaceOnUse" x1="680" y1="720" x2="910" y2="660">
+      <stop offset="0" stop-color="#500001"/>
+      <stop offset="1" stop-color="#950007"/>
+    </linearGradient>
+  </defs>
+  <path fill="#F20E19" d="M458 336 L1072 336 L919 482 L522 482 L442 546 L407 690 L461 734 L757 736 L775 677 L727 677 L640 634 L529 634 L604 560 L1042 560 L967 634 L921 800 L821 866 L330 866 L218 772 L300 470 Z"/>
+  <path fill="url(#face)" d="M351 480 L522 482 L442 546 L407 690 L461 734 L757 736 L558 866 L375 866 L273 775 Z"/>
+  <path fill="url(#top)" d="M452 402 L922 402 L848 482 L349 482 Z"/>
+  <path fill="url(#leg)" d="M640 634 L911 630 L869 798 L804 866 L558 866 L757 736 L775 677 L727 677 Z"/>
+</svg>

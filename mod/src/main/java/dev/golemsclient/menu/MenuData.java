@@ -51,8 +51,8 @@ public final class MenuData {
     /** The first-launch setup was finished (or skipped). */
     public boolean setupDone = false;
 
-    /** The mod menu's favourite mods (shown first). */
-    public java.util.Set<String> favouriteMods = new java.util.LinkedHashSet<>();
+    /** OneConfig's accent was moved to Golem's Client red (once, so a colour picked later stays). */
+    public boolean oneConfigAccentSet = false;
 
     // the lobby (the world behind the menu)
     public boolean lobbyEnabled = true;

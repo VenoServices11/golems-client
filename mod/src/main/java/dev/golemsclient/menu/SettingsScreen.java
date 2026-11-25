@@ -569,9 +569,9 @@ public final class SettingsScreen extends MenuScreen {
         minecraft.setScreen(new net.minecraft.client.gui.screens.options.VideoSettingsScreen(this, minecraft, o));
     }
 
-    /** Golem's Client's mod menu. */
+    /** The mods menu (OneConfig's, in Golem's Client's colours). */
     private void openMods() {
-        GolemsMenu.open();
+        dev.golemsclient.oneconfig.OneConfigBrand.openMenu(this::showToast);
     }
 
     @Override

@@ -37,8 +37,8 @@ public final class GolemsClient implements ClientModInitializer {
         dev.golemsclient.badge.Badges.register();
         // where you are, for the launcher's Discord status
         DiscordStatus.register();
-        // the mod menu's key (Right Shift unless picked otherwise)
-        dev.golemsclient.menu.GolemsMenuKey.register();
+        // OneConfig's menu in Golem's Client's colours
+        dev.golemsclient.oneconfig.OneConfigBrand.register();
         DevShots.register();
         LOGGER.info("Golem's Client {} (mod {})", version(), modVersion());
     }

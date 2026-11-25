@@ -47,6 +47,8 @@ public final class Overlay {
 
     /** Starts drawing into this GuiGraphics (nestable). */
     public static void begin(GuiGraphics graphics) {
+        // a frame that crashed part-way never ended: start over, or everything after draws onto that dead frame
+        if (depth > 0 && graphics != g) depth = 0;
         if (depth++ == 0) {
             g = graphics;
             scale = Math.max(1, Minecraft.getInstance().getWindow().getGuiScale());

@@ -604,9 +604,9 @@ public final class PauseMenu extends MenuScreen {
     }
 
     /** The mods menu (OneConfig's, until Golem's Client has its own). */
-    /** Golem's Client's mod menu. */
+    /** The mods menu (OneConfig's, in Golem's Client's colours). */
     private void openMods() {
-        GolemsMenu.open();
+        dev.golemsclient.oneconfig.OneConfigBrand.openMenu(this::showToast);
     }
 
     // ------------------------------------------------------------------ input
