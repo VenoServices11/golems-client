@@ -7,7 +7,8 @@
     "OneConfigAccentMixin",
     "OneConfigIconMixin",
     "OneConfigTextMixin",
-    "OneConfigVersionMixin"
+    "OneConfigVersionMixin",
+    "OneConfigWarmUpMixin"
   ],
   "injectors": {
     "defaultRequire": 0
