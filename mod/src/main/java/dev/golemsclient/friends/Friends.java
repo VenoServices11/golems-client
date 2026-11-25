@@ -131,7 +131,10 @@ public final class Friends {
         if (dev.golemsclient.DevShots.ON) {
             // dev screenshots: made-up friends, nothing sent
             if (state == null) state = sample();
-            if (mc.getUser() != null) Chats.devSample(mc.getUser().getProfileId());
+            if (mc.getUser() != null) {
+                Chats.devSample(mc.getUser().getProfileId());
+                Parties.devSample(mc.getUser().getProfileId());
+            }
             return;
         }
         long now = System.currentTimeMillis();
@@ -139,16 +142,19 @@ public final class Friends {
         busy = true;
         nextPoll = now + (now < fastUntil ? POLL_FAST_MS : POLL_MS);
         String where = where(mc);
-        boolean sendPresence = now - lastPresence >= PRESENCE_MS || !where.equals(lastServer);
-        String mcVersion = SharedConstants.getCurrentVersion().name();
         UUID me = mc.getUser().getProfileId();
+        // a party leader's game also sends the full address, so the party can follow
+        String address = Parties.leading(me) ? Parties.currentAddress() : "";
+        String key = where + "|" + address;
+        boolean sendPresence = now - lastPresence >= PRESENCE_MS || !key.equals(lastServer);
+        String mcVersion = SharedConstants.getCurrentVersion().name();
         String name = mc.getUser().getName();
         CompletableFuture.runAsync(() -> {
             try {
-                poll(me, name, sendPresence ? where : null, mcVersion);
+                poll(me, name, sendPresence ? where : null, mcVersion, address);
                 if (sendPresence) {
                     lastPresence = now;
-                    lastServer = where;
+                    lastServer = key;
                 }
             } catch (Locked e) {
                 problem = e.getMessage();
@@ -163,13 +169,14 @@ public final class Friends {
         });
     }
 
-    private static void poll(UUID me, String name, String where, String mcVersion) throws Exception {
+    private static void poll(UUID me, String name, String where, String mcVersion, String address) throws Exception {
         JsonObject body = new JsonObject();
         if (where != null) {
             JsonObject presence = new JsonObject();
             presence.addProperty("source", "game");
             if (!where.isEmpty()) presence.addProperty("server", where);
             presence.addProperty("mc", mcVersion);
+            if (!address.isEmpty()) presence.addProperty("party_server", address);
             body.add("presence", presence);
         }
         long since = Chats.since();
@@ -177,6 +184,7 @@ public final class Friends {
         JsonObject answer = signedIn(me, name, "/friends/state", body);
         State next = parse(answer);
         Chats.polled(answer, me);
+        Parties.polled(answer, me);
         announceNew(next);
         state = next;
         problem = null;

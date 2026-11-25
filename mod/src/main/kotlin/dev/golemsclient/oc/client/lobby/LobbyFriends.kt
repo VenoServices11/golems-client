@@ -50,9 +50,17 @@ object LobbyFriends {
      */
     fun cast(): LobbyCast {
         val state = Friends.state() ?: return EMPTY
-        val online = state.friends().filter { it.online() && !it.name().isNullOrEmpty() }
-        if (online.isEmpty()) return EMPTY
-        return LobbyCast(emptyList(), online.map { LobbyFriend(it.uuid(), it.name()!!, if (it.inGame()) it.where() else null) })
+        val me = Minecraft.getInstance().user?.profileId
+        // your party stands next to you; your other online friends further back
+        val party = dev.golemsclient.friends.Parties.party()?.members().orEmpty()
+            .filter { it.uuid() != me && it.online() && !it.name().isNullOrEmpty() }
+        val inParty = party.map { it.uuid() }.toSet()
+        val partyCast = party.map { member ->
+            LobbyFriend(member.uuid(), member.name()!!, member.where()?.takeIf { it.startsWith("Playing") })
+        }
+        val online = state.friends().filter { it.online() && !it.name().isNullOrEmpty() && it.uuid() !in inParty }
+        if (partyCast.isEmpty() && online.isEmpty()) return EMPTY
+        return LobbyCast(partyCast, online.map { LobbyFriend(it.uuid(), it.name()!!, if (it.inGame()) it.where() else null) })
     }
 
     fun skin(friend: LobbyFriend): PlayerSkin {

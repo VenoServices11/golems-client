@@ -192,6 +192,10 @@ async fn run_session(
             tracing::info!("[friends] connected for {account_id}");
         }
         changes(&client.events, account_id, previous.as_ref(), &state);
+        crate::party::changes(
+            previous.as_ref().and_then(|p| p.parties.as_ref()),
+            state.parties.as_ref(),
+        );
         previous = Some(state);
 
         tokio::select! {

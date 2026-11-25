@@ -14,8 +14,8 @@ pub(super) use crate::components::{inset_border, use_player_name};
 pub(super) const LIST_WIDTH_PX: f32 = 320.;
 /// Messages and group chats are on Golem's Client's server.
 pub(super) const MESSAGES: bool = true;
-/// Parties aren't on Golem's Client's server yet; until they are, the Party tab is hidden.
-pub(super) const PARTIES: bool = false;
+/// Parties are on Golem's Client's server (the Party tab).
+pub(super) const PARTIES: bool = true;
 pub(super) const ROW_RADIUS_PX: f32 = 8.;
 pub(super) const CARD_RADIUS_PX: f32 = 16.;
 pub(super) const CHIP_RADIUS_PX: f32 = 6.;

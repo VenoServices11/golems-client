@@ -31,6 +31,7 @@
 
 import { messages, inbox, messagesCleanup } from "./messages.js";
 import { capes, capesOpen } from "./capes.js";
+import { parties, partyState, leaderServer, partiesCleanup } from "./parties.js";
 
 const UUID = /^[0-9a-f]{32}$/;
 const NAME = /^[A-Za-z0-9_]{1,16}$/;
@@ -89,7 +90,7 @@ async function me(env, token, now) {
 
 /** Handles a /friends/... or /admin/friends/... request, or returns null for any other path. */
 export async function friends(path, env, body, now, helpers) {
-  if (!["/friends/", "/admin/friends/", "/messages/", "/capes/", "/admin/capes/"].some((p) => path.startsWith(p))) return null;
+  if (!["/friends/", "/admin/friends/", "/messages/", "/capes/", "/admin/capes/", "/party/"].some((p) => path.startsWith(p))) return null;
   await ensure(env);
   const open = await capesOpen(path, env, body, now, helpers);
   if (open) return open;
@@ -99,6 +100,7 @@ export async function friends(path, env, body, now, helpers) {
   if (!uuid) return fail("Sign in again.", 401, "login");
   if (path.startsWith("/messages/")) return messages(path, env, body, now, uuid);
   if (path.startsWith("/capes/")) return capes(path, env, body, now, uuid, helpers);
+  if (path.startsWith("/party/")) return parties(path, env, body, now, uuid);
   switch (path) {
     case "/friends/state": return state(env, uuid, body, now, helpers);
     case "/friends/add": return add(env, uuid, body, now);
@@ -197,8 +199,11 @@ async function state(env, uuid, body, now, helpers) {
   }));
   const me0 = mine.results[0] || {};
   const chats = await inbox(env, uuid, body.since);
+  if (p && p.source === "game") await leaderServer(env, uuid, p.party_server || null, now);
+  const party = await partyState(env, uuid, now);
   return json({
     ...chats,
+    parties: party,
     me: { uuid, name: me0.name || null, shareServer: me0.share_server !== 0 },
     friends: friendsOut,
     incoming: incoming.results.map((r) => ({ id: r.id, uuid: r.uuid, name: r.name || null, at: r.at })),
@@ -317,4 +322,5 @@ export async function friendsCleanup(env, now) {
     env.DB.prepare("DELETE FROM f_sessions WHERE expires < ?").bind(now),
   ]);
   await messagesCleanup(env, now);
+  await partiesCleanup(env, now);
 }

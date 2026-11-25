@@ -44,6 +44,9 @@ pub struct State {
     /// Messages newer than the `since` that was sent.
     #[serde(default)]
     pub messages: Vec<NewMessage>,
+    /// Your party and party invites (as /party/state answers).
+    #[serde(default)]
+    pub parties: Option<Value>,
 }
 
 #[derive(Deserialize, Clone, Debug, Default)]
@@ -345,6 +348,20 @@ fn remember(account: Uuid, state: &State) {
         for b in &state.blocked {
             if let Some(name) = &b.name {
                 names.insert(parse_uuid(&b.uuid), name.clone());
+            }
+        }
+    }
+    if let Some(names) = state.parties.as_ref().and_then(|p| p["party"]["names"].as_object()) {
+        for (id, name) in names {
+            if let Some(name) = name.as_str() {
+                remember_name(parse_uuid(id), name);
+            }
+        }
+    }
+    if let Some(invites) = state.parties.as_ref().and_then(|p| p["incoming"].as_array()) {
+        for invite in invites {
+            if let (Some(id), Some(name)) = (invite["sender"].as_str(), invite["sender_name"].as_str()) {
+                remember_name(parse_uuid(id), name);
             }
         }
     }

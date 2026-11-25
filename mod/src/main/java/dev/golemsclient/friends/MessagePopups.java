@@ -30,7 +30,10 @@ public final class MessagePopups {
     private static final int MAX = 3;
     private static final float W = 156f;
 
-    private record Popup(Chats.Message message, long at) {
+    /** What J does for a card: open its chat, follow the party leader, or open the party. */
+    private enum Act { CHAT, FOLLOW, PARTY }
+
+    private record Popup(UUID face, String faceName, String title, String sub, String body, Act act, int chat, long at, long life) {
     }
 
     private static final List<Popup> showing = new ArrayList<>();
@@ -47,7 +50,17 @@ public final class MessagePopups {
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(GolemsClient.MOD_ID, "message_popups"), (g, tick) -> draw(g));
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             while (key.consumeClick()) {
-                if (mc.screen == null && mc.level != null) dev.golemsclient.menu.PauseMenu.messages(lastChat);
+                if (mc.screen != null || mc.level == null) continue;
+                Popup top = newest();
+                if (top != null && top.act() == Act.FOLLOW) {
+                    dismiss(top);
+                    Parties.follow();
+                } else if (top != null && top.act() == Act.PARTY) {
+                    dismiss(top);
+                    dev.golemsclient.menu.PauseMenu.party();
+                } else {
+                    dev.golemsclient.menu.PauseMenu.messages(lastChat);
+                }
             }
         });
     }
@@ -58,30 +71,76 @@ public final class MessagePopups {
         return key.getTranslatedKeyMessage().getString();
     }
 
-    private static void show(Chats.Message m) {
-        Minecraft mc = Minecraft.getInstance();
-        // in the menus the friends panel shows it instead
-        if (mc.level == null) return;
-        if (mc.screen instanceof dev.golemsclient.menu.MenuScreen menu) {
-            menu.notice(Chats.nameOf(m.sender(), Chats.chat(m.chat())) + ": " + m.text());
-            lastChat = m.chat();
-            return;
-        }
+    private static Popup newest() {
+        long now = System.currentTimeMillis();
         synchronized (showing) {
-            showing.removeIf(p -> p.message().chat() == m.chat());
-            showing.add(new Popup(m, System.currentTimeMillis()));
+            for (int i = showing.size() - 1; i >= 0; i--) {
+                Popup p = showing.get(i);
+                if (now - p.at() <= p.life()) return p;
+            }
+        }
+        return null;
+    }
+
+    private static void dismiss(Popup p) {
+        synchronized (showing) {
+            showing.remove(p);
+        }
+    }
+
+    private static void add(Popup p) {
+        synchronized (showing) {
+            if (p.act() == Act.CHAT) showing.removeIf(x -> x.act() == Act.CHAT && x.chat() == p.chat());
+            if (p.act() == Act.FOLLOW) showing.removeIf(x -> x.act() == Act.FOLLOW);
+            showing.add(p);
             while (showing.size() > MAX) showing.remove(0);
         }
-        lastChat = m.chat();
-        mc.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
+        Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
                 net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP, 1.6f, 0.25f));
+    }
+
+    private static void show(Chats.Message m) {
+        Minecraft mc = Minecraft.getInstance();
+        lastChat = m.chat();
+        // in the menus the friends panel shows it instead
+        if (mc.level == null) return;
+        Chats.Chat chat = Chats.chat(m.chat());
+        String name = Chats.nameOf(m.sender(), chat);
+        if (mc.screen instanceof dev.golemsclient.menu.MenuScreen menu) {
+            menu.notice(name + ": " + m.text());
+            return;
+        }
+        UUID me = mc.getUser().getProfileId();
+        String sub = chat == null ? "Message" : chat.group() || chat.members().size() > 2 ? "in " + chat.title(me) : "Message";
+        add(new Popup(m.sender(), name, name, sub, m.text(), Act.CHAT, m.chat(), System.currentTimeMillis(), SHOW_MS));
+    }
+
+    /** The party leader joined a server: J follows them. */
+    public static void follow(String leader, String server) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof dev.golemsclient.menu.MenuScreen menu) {
+            menu.notice(leader + " joined " + server + ". Open the friends panel's Party tab to follow.");
+            return;
+        }
+        add(new Popup(null, null, "Join " + leader + "?", "Your party leader is on " + server, null, Act.FOLLOW, -1,
+                System.currentTimeMillis(), 20_000L));
+    }
+
+    /** A party invite (J opens the party, to answer it). */
+    public static void partyInvite(String text) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.screen instanceof dev.golemsclient.menu.MenuScreen) {
+            if (mc.screen instanceof dev.golemsclient.menu.MenuScreen menu) menu.notice(text);
+            return;
+        }
+        add(new Popup(null, null, text, "Party invite", null, Act.PARTY, -1, System.currentTimeMillis(), 15_000L));
     }
 
     private static void draw(GuiGraphics g) {
         List<Popup> list;
         long now = System.currentTimeMillis();
         synchronized (showing) {
-            showing.removeIf(p -> now - p.at() > SHOW_MS);
+            showing.removeIf(p -> now - p.at() > p.life());
             if (showing.isEmpty()) return;
             list = new ArrayList<>(showing);
         }
@@ -91,47 +150,47 @@ public final class MessagePopups {
         try {
             float sw = mc.getWindow().getGuiScaledWidth();
             float y = 6f;
-            UUID me = mc.getUser().getProfileId();
-            for (int i = list.size() - 1; i >= 0; i--) {
-                Popup p = list.get(i);
-                y += card(p, sw, y, now, me) + 4f;
-            }
+            for (int i = list.size() - 1; i >= 0; i--) y += card(list.get(i), sw, y, now) + 4f;
         } finally {
             Overlay.end();
         }
     }
 
     /** One card; returns its height. */
-    private static float card(Popup p, float sw, float y, long now, UUID me) {
+    private static float card(Popup p, float sw, float y, long now) {
         long age = now - p.at();
         float in = Math.min(1f, age / (float) IN_MS);
-        float out = Math.min(1f, Math.max(0f, (SHOW_MS - age) / (float) OUT_MS));
+        float out = Math.min(1f, Math.max(0f, (p.life() - age) / (float) OUT_MS));
         float a = Math.min(ease(in), out);
         float slide = (1f - ease(in)) * 24f;
-        Chats.Message m = p.message();
-        Chats.Chat chat = Chats.chat(m.chat());
-        String name = Chats.nameOf(m.sender(), chat);
-        String where = chat != null && chat.group() ? chat.title(me) : null;
-        List<String> lines = wrap(m.text(), W - 34f, 6f, 2);
+        List<String> lines = p.body() == null ? List.of() : wrap(p.body(), W - 34f, 6f, 2);
         String keyName = keyName();
-        float h = 24f + lines.size() * 8f + (keyName != null ? 4f : 0f);
+        float h = 24f + lines.size() * 8f + (keyName != null && !lines.isEmpty() ? 4f : 0f);
         float x0 = sw - W - 6f + slide, x1 = x0 + W;
         Overlay.rect(x0, y, x1, y + h, 4f, alpha(0xF0141417, a));
         Overlay.outline(x0, y, x1, y + h, 4f, alpha(0x1FFFFFFF, a), 0.5f);
-        Overlay.rect(x0, y + 4f, x0 + 1.5f, y + h - 4f, 1f, alpha(GolemsClient.ACCENT, a));
-        face(m.sender(), name, x0 + 7f, y + 6f, 14f, a);
+        Overlay.rect(x0, y + 4f, x0 + 1.5f, y + h - 4f, 1f, alpha(p.act() == Act.CHAT ? GolemsClient.ACCENT : 0xFF3DD68C, a));
+        if (p.face() != null) {
+            face(p.face(), p.faceName(), x0 + 7f, y + 6f, 14f, a);
+        } else {
+            Overlay.rect(x0 + 6.5f, y + 5.5f, x0 + 21.5f, y + 20.5f, 2f, alpha(0xFF26262B, a));
+            Overlay.icon("users", x0 + 9f, y + 8f, 10f, alpha(0xFFC8C8CE, a));
+        }
         float tx = x0 + 27f;
-        Overlay.text(Face.SEMIBOLD, fit(Face.SEMIBOLD, name, 6.5f, W - 60f), tx, y + 5.5f, 6.5f, alpha(0xFFEDEDEF, a), Align.LEFT);
-        String sub = where == null ? "Message" : "in " + where;
-        Overlay.text(Face.REGULAR, fit(Face.REGULAR, sub, 5f, W - 40f), tx, y + 13.5f, 5f, alpha(0xFF6E6E76, a), Align.LEFT);
+        String hint = keyName == null ? null : keyName.toUpperCase(java.util.Locale.ROOT) + switch (p.act()) {
+            case CHAT -> " TO REPLY";
+            case FOLLOW -> " TO JOIN";
+            case PARTY -> " TO OPEN";
+        };
+        float hintW = hint == null ? 0f : Overlay.width(Face.MONO, hint, 4.5f) + 8f;
+        Overlay.text(Face.SEMIBOLD, fit(Face.SEMIBOLD, p.title(), 6.5f, W - 34f - hintW), tx, y + 5.5f, 6.5f, alpha(0xFFEDEDEF, a), Align.LEFT);
+        Overlay.text(Face.REGULAR, fit(Face.REGULAR, p.sub(), 5f, W - 40f), tx, y + 13.5f, 5f, alpha(0xFF6E6E76, a), Align.LEFT);
         float ly = y + 21f;
         for (String line : lines) {
             Overlay.text(Face.REGULAR, line, tx, ly, 6f, alpha(0xFFC8C8CE, a), Align.LEFT);
             ly += 8f;
         }
-        if (keyName != null) {
-            Overlay.text(Face.MONO, keyName.toUpperCase(java.util.Locale.ROOT) + " TO REPLY", x1 - 6f, y + 5.5f, 4.5f, alpha(0xFF6E6E76, a), Align.RIGHT);
-        }
+        if (hint != null) Overlay.text(Face.MONO, hint, x1 - 6f, y + 5.5f, 4.5f, alpha(p.act() == Act.CHAT ? 0xFF6E6E76 : 0xFF3DD68C, a), Align.RIGHT);
         return h;
     }
 

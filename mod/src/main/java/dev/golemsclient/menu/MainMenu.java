@@ -104,6 +104,12 @@ public final class MainMenu extends MenuScreen {
     private static int devTab = -1;
 
     private static Integer devChat;
+    private static boolean devParty;
+
+    /** Dev screenshots only: the Social panel's party. */
+    public static void devParty() {
+        devParty = true;
+    }
 
     /** Dev screenshots only: opens this chat in the Social panel. */
     public static void devChat(Integer chat) {
@@ -261,6 +267,10 @@ public final class MainMenu extends MenuScreen {
         LobbyBridge.accent(ACCENT);
         if (dev.golemsclient.DevShots.ON) {
             if (devSocial && !social.open()) social.show();
+            if (devParty) {
+                social.showParty();
+                devParty = false;
+            }
             if (devChat != null) {
                 social.showChats(devChat);
                 devChat = null;

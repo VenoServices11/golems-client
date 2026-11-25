@@ -2,6 +2,7 @@ package dev.golemsclient.menu;
 
 import dev.golemsclient.friends.Chats;
 import dev.golemsclient.friends.Friends;
+import dev.golemsclient.friends.Parties;
 import dev.golemsclient.oc.client.lobby.LobbyFriend;
 import dev.golemsclient.oc.client.lobby.LobbyFriends;
 import dev.golemsclient.render.Overlay;
@@ -29,7 +30,7 @@ final class SocialPanel {
 
     private final MenuScreen m;
     private boolean open;
-    private int tab;            // 0 friends, 1 chats, 2 requests, 3 blocked
+    private int tab;            // 0 friends, 1 chats, 2 party, 3 requests, 4 blocked
     private String name = "";
     private boolean typing;     // in the add-a-friend box
     private boolean typingMsg;  // in the message box
@@ -59,9 +60,15 @@ final class SocialPanel {
         scroll = 0f;
         Friends.State s = Friends.state();
         // straight to the requests when someone asked, or the chats when there's a new message
-        tab = s != null && !s.incoming().isEmpty() && s.online() == 0 ? 2 : Chats.unread() > 0 ? 1 : 0;
+        tab = !Parties.invites().isEmpty() ? 2 : s != null && !s.incoming().isEmpty() && s.online() == 0 ? 3 : Chats.unread() > 0 ? 1 : 0;
         if (tab == 1) Chats.refresh();
         Friends.watch();
+    }
+
+    /** Opens on the party. */
+    void showParty() {
+        show();
+        setTab(2);
     }
 
     /** Opens on the chats (and this chat, if given). */
@@ -131,12 +138,16 @@ final class SocialPanel {
         int requests = s == null ? 0 : s.incoming().size();
         tx = chip(tx, ty, "Friends", tab == 0, 0, () -> setTab(0)) + 4f;
         tx = chip(tx, ty, "Chats", tab == 1, Chats.unread(), () -> setTab(1)) + 4f;
-        tx = chip(tx, ty, "Requests", tab == 2, requests, () -> setTab(2)) + 4f;
-        chip(tx, ty, "Blocked", tab == 3, 0, () -> setTab(3));
+        tx = chip(tx, ty, "Party", tab == 2, Parties.invites().size(), () -> setTab(2)) + 4f;
+        tx = chip(tx, ty, "Requests", tab == 3, requests, () -> setTab(3)) + 4f;
+        chip(tx, ty, "Blocked", tab == 4, 0, () -> setTab(4));
 
         float listTop = ty + 26f;
-        if (tab == 0 || tab == 2) {
+        if (tab == 0 || tab == 3) {
             addBar(x0 + 16f, listTop, x1 - 16f);
+            listTop += 28f;
+        } else if (tab == 2) {
+            partyBar(x0 + 16f, listTop, x1 - 16f);
             listTop += 28f;
         } else if (tab == 1) {
             chatsBar(x0 + 16f, listTop, x1 - 16f, s);
@@ -154,6 +165,8 @@ final class SocialPanel {
         } else if (tab == 1) {
             drawChats(x0 + 16f, x1 - 16f);
         } else if (tab == 2) {
+            drawParty(x0 + 16f, x1 - 16f);
+        } else if (tab == 3) {
             drawRequests(s, x0 + 16f, x1 - 16f);
         } else {
             drawBlocked(s, x0 + 16f, x1 - 16f);
@@ -215,10 +228,18 @@ final class SocialPanel {
         m.rect(nx, y + 18.5f, nx + 4f, y + 22.5f, 2f, dot);
         String where = f.online() ? f.where() : f.lastSeen() > 0 ? "Last seen " + MenuScreen.ago(f.lastSeen() * 1000L) : "Offline";
         if (f.inGame() && f.mc() != null) where += " · " + f.mc();
-        m.text(Face.REGULAR, m.fit(Face.REGULAR, where, 6f, x1 - nx - 60f), nx + 7f, y + 17f, 6f,
+        m.text(Face.REGULAR, m.fit(Face.REGULAR, where, 6f, x1 - nx - 80f), nx + 7f, y + 17f, 6f,
                 f.online() ? MenuScreen.TEXT_2 : MenuScreen.TEXT_3, Align.LEFT);
         if (over || confirming("remove:" + f.uuid()) || confirming("block:" + f.uuid())) {
             float bx = x1 - 22f;
+            Parties.Party party = Parties.party();
+            boolean inParty = party != null && party.members().stream().anyMatch(x -> x.uuid().equals(f.uuid()));
+            if (!inParty) {
+                iconButton("users", bx - 54f, y + 7f, 14f, "Invite " + name + " to your party", () -> {
+                    working = true;
+                    Parties.invite(f.uuid(), this::done);
+                }, false);
+            }
             iconButton("chat", bx - 36f, y + 7f, 14f, "Message " + name, () -> {
                 working = true;
                 Chats.dm(f.uuid(), c -> {
@@ -306,6 +327,126 @@ final class SocialPanel {
         endList(list.size() * ROW, x1);
     }
 
+
+
+    // ------------------------------------------------------------------ party
+
+    private void partyBar(float x0, float y, float x1) {
+        Parties.Party party = Parties.party();
+        UUID me = net.minecraft.client.Minecraft.getInstance().getUser().getProfileId();
+        if (party == null) {
+            m.text(Face.REGULAR, "Invite friends from the Friends tab to start a party (up to 8).", x0 + 2f, y + 9f - 6.5f * 0.6f, 6.5f,
+                    MenuScreen.TEXT_3, Align.LEFT);
+            return;
+        }
+        float bx = x1;
+        bx = barButton(bx, y, "Leave", false, () -> twice("leaveParty", () -> Parties.leave(this::done)), confirming("leaveParty")
+                ? "Click again to leave" : null) - 6f;
+        if (party.chat() > 0) {
+            bx = barButton(bx, y, "Party chat", false, () -> {
+                Chats.refresh();
+                openChat(party.chat());
+            }, null) - 6f;
+        }
+        Parties.Member leader = party.leaderMember();
+        if (!party.leads(me) && party.server() != null) {
+            String who = leader == null || leader.name() == null ? "the leader" : leader.name();
+            barButton(bx, y, "Join " + who, true, () -> {
+                close();
+                Parties.follow();
+            }, "Join " + party.server());
+        } else {
+            m.text(Face.REGULAR, party.members().size() + " of " + Parties.MAX + " in the party", x0 + 2f, y + 9f - 6.5f * 0.6f, 6.5f,
+                    MenuScreen.TEXT_3, Align.LEFT);
+        }
+    }
+
+    /** A button ending at x1 in a bar; returns its left edge. */
+    private float barButton(float x1, float y, String label, boolean primary, Runnable action, String tip) {
+        float bw = m.textW(Face.SEMIBOLD, label, 7f) + 20f, x0 = x1 - bw;
+        boolean over = !working && m.inside(x0, y, x1, y + 18f);
+        float hv = m.anim("partyBtn:" + label, over);
+        m.rect(x0, y, x1, y + 18f, 4f, primary ? MenuScreen.mix(MenuScreen.ACCENT, 0xFFEE6A6E, hv) : MenuScreen.mix(0x14FFFFFF, 0x2EFFFFFF, hv));
+        if (!primary) m.outline(x0, y, x1, y + 18f, 4f, MenuScreen.LINE);
+        m.text(Face.SEMIBOLD, label, (x0 + x1) / 2f, y + 9f - 7f * 0.6f, 7f, primary ? 0xFFFFFFFF : MenuScreen.TEXT, Align.CENTER);
+        if (over) {
+            m.pointer = true;
+            if (tip != null) m.tooltip = tip;
+            m.hits.add(0, new MenuScreen.Hit(x0, y, x1, y + 18f, action));
+        }
+        return x0;
+    }
+
+    private void drawParty(float x0, float x1) {
+        Parties.Party party = Parties.party();
+        List<Parties.Invite> invites = Parties.invites();
+        UUID me = net.minecraft.client.Minecraft.getInstance().getUser().getProfileId();
+        int members = party == null ? 0 : party.members().size();
+        if (members == 0 && invites.isEmpty()) {
+            empty(x0 - 16f, x1 + 16f, "You're not in a party", "Hover a friend in the Friends tab and press the party button to invite them.");
+            return;
+        }
+        float content = (invites.isEmpty() ? 0f : 14f + invites.size() * ROW) + (members == 0 ? 0f : 14f + members * ROW);
+        float y = beginList(content);
+        if (!invites.isEmpty()) {
+            if (visible(y)) m.text(Face.MONO, "INVITES", x0 + 2f, y + 4f, 5.5f, MenuScreen.TEXT_3, Align.LEFT);
+            y += 14f;
+            for (Parties.Invite i : invites) {
+                if (visible(y)) {
+                    String who = i.fromName() == null ? "A friend" : i.fromName();
+                    face(i.from(), i.fromName(), x0 + 6f, y + 5f, 18f, 1f);
+                    m.text(Face.SEMIBOLD, who + "'s party", x0 + 30f, y + 5f, 7.5f, MenuScreen.TEXT, Align.LEFT);
+                    m.text(Face.REGULAR, i.size() + (i.size() == 1 ? " person" : " people") + (party != null ? " · joining leaves your party" : ""),
+                            x0 + 30f, y + 17f, 6f, MenuScreen.TEXT_2, Align.LEFT);
+                    float bx = textButton(x1 - 4f, y + 6f, "Join", true, () -> {
+                        working = true;
+                        Parties.accept(i, this::done);
+                    });
+                    textButton(bx - 4f, y + 6f, "Decline", false, () -> {
+                        working = true;
+                        Parties.decline(i, this::done);
+                    });
+                }
+                y += ROW;
+            }
+        }
+        if (members > 0) {
+            if (visible(y)) m.text(Face.MONO, "YOUR PARTY", x0 + 2f, y + 4f, 5.5f, MenuScreen.TEXT_3, Align.LEFT);
+            y += 14f;
+            boolean lead = party.leads(me);
+            for (Parties.Member mem : party.members()) {
+                if (visible(y)) {
+                    boolean over = hovering(x0, y, x1, y + ROW);
+                    float hv = m.anim("member:" + mem.uuid(), over);
+                    if (hv > 0.01f) m.rect(x0, y + 1f, x1, y + ROW - 1f, 5f, MenuScreen.alpha(0x10FFFFFF, hv));
+                    boolean you = mem.uuid().equals(me);
+                    String name = you ? "You" : mem.name() == null ? "Unknown player" : mem.name();
+                    face(mem.uuid(), mem.name(), x0 + 6f, y + 5f, 18f, mem.online() ? 1f : 0.45f);
+                    m.text(Face.SEMIBOLD, name, x0 + 30f, y + 5f, 7.5f, MenuScreen.TEXT, Align.LEFT);
+                    if (mem.uuid().equals(party.leader())) {
+                        float lx = x0 + 30f + m.textW(Face.SEMIBOLD, name, 7.5f) + 5f;
+                        m.rect(lx, y + 5.5f, lx + 28f, y + 13.5f, 2f, 0x263DD68C);
+                        m.text(Face.MONO, "LEADER", lx + 14f, y + 7f, 4.5f, GAME, Align.CENTER);
+                    }
+                    int dot = !mem.online() ? MenuScreen.TEXT_3 : mem.where() != null && mem.where().startsWith("Playing") ? GAME : LAUNCHER;
+                    m.rect(x0 + 30f, y + 18.5f, x0 + 34f, y + 22.5f, 2f, dot);
+                    m.text(Face.REGULAR, m.fit(Face.REGULAR, mem.where() == null ? "" : mem.where(), 6f, x1 - x0 - 120f), x0 + 37f, y + 17f, 6f,
+                            MenuScreen.TEXT_2, Align.LEFT);
+                    if (lead && !you && (over || confirming("kick:" + mem.uuid()))) {
+                        float bx = x1 - 22f;
+                        iconButton("close", bx, y + 7f, 14f, confirming("kick:" + mem.uuid()) ? "Click again to remove " + name : "Remove from the party",
+                                () -> twice("kick:" + mem.uuid(), () -> Parties.kick(mem, this::done)), confirming("kick:" + mem.uuid()));
+                        iconButton("star", bx - 18f, y + 7f, 14f, "Make " + name + " the leader", () -> {
+                            working = true;
+                            Parties.makeLeader(mem, this::done);
+                        }, false);
+                    }
+                }
+                y += ROW;
+            }
+        }
+        endList(content, x1);
+    }
 
     // ------------------------------------------------------------------ chats
 
@@ -738,7 +879,7 @@ final class SocialPanel {
         }
         if (!typing) {
             // typing a name starts the add box
-            if (tab == 1 || tab == 3 || !Character.isLetterOrDigit(codepoint) && codepoint != '_') return true;
+            if (tab == 1 || tab == 2 || tab == 4 || !Character.isLetterOrDigit(codepoint) && codepoint != '_') return true;
             typing = true;
         }
         if (name.length() < 16 && (Character.isLetterOrDigit(codepoint) || codepoint == '_') && codepoint < 128) {

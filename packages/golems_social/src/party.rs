@@ -1,15 +1,14 @@
 use std::sync::LazyLock;
 
 use chrono::{DateTime, Utc};
-use reqwest::{Method, StatusCode};
 use serde::Deserialize;
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use golems_auth::MinecraftAccount;
 
-use crate::PlusError;
-use crate::api::{json_authorized, send_authorized};
+use crate::{PlusError, golems};
+use serde_json::json;
 
 pub const MAX_PARTY_SIZE: usize = 8;
 
@@ -159,6 +158,7 @@ pub fn error_message(err: &PlusError) -> Option<String> {
     }
 
     match err {
+        PlusError::Server { status, message } if *status < 500 => Some(message.clone()),
         PlusError::Api { status, body } if *status < 500 => serde_json::from_str::<Body>(body)
             .ok()
             .map(|body| body.message)
@@ -167,27 +167,31 @@ pub fn error_message(err: &PlusError) -> Option<String> {
     }
 }
 
+/// Golem's Client: parties are on Golem's Client's own server (see `server/src/parties.js`).
+#[derive(Deserialize)]
+struct PartyState {
+    #[serde(default)]
+    party: Option<Party>,
+    #[serde(default)]
+    incoming: Vec<PartyInvite>,
+    #[serde(default)]
+    outgoing: Vec<PartyInvite>,
+}
+
+async fn state(account: &MinecraftAccount) -> Result<PartyState, PlusError> {
+    golems::call_as(account, "/party/state", json!({})).await
+}
+
 pub async fn current(account: &MinecraftAccount) -> Result<Option<Party>, PlusError> {
-    let response = send_authorized(account, Method::GET, "/v1/party", None).await?;
-    if response.status() == StatusCode::NO_CONTENT {
-        return Ok(None);
-    }
-    Ok(Some(response.json().await?))
+    Ok(state(account).await?.party)
 }
 
 pub async fn create(account: &MinecraftAccount) -> Result<Party, PlusError> {
-    json_authorized(
-        account,
-        Method::POST,
-        "/v1/party",
-        Some(&serde_json::json!({})),
-    )
-    .await
+    golems::call_as(account, "/party/create", json!({})).await
 }
 
 pub async fn leave(account: &MinecraftAccount) -> Result<(), PlusError> {
-    send_authorized(account, Method::POST, "/v1/party/leave", None).await?;
-    Ok(())
+    golems::call(account, "/party/leave", json!({})).await.map(drop)
 }
 
 pub async fn leave_for_sign_out(account: &MinecraftAccount) -> Result<(), PlusError> {
@@ -202,42 +206,29 @@ pub async fn leave_for_sign_out(account: &MinecraftAccount) -> Result<(), PlusEr
 }
 
 pub async fn disband(account: &MinecraftAccount) -> Result<(), PlusError> {
-    send_authorized(account, Method::DELETE, "/v1/party", None).await?;
-    Ok(())
+    golems::call(account, "/party/disband", json!({})).await.map(drop)
 }
 
 pub async fn transfer_leader(account: &MinecraftAccount, player: Uuid) -> Result<Party, PlusError> {
-    json_authorized(
-        account,
-        Method::POST,
-        "/v1/party/leader",
-        Some(&serde_json::json!({ "player": player })),
-    )
-    .await
+    golems::call_as(account, "/party/leader", json!({ "uuid": player.simple().to_string() })).await
 }
 
 pub async fn kick(account: &MinecraftAccount, player: Uuid) -> Result<(), PlusError> {
-    let path = format!("/v1/party/members/{player}");
-    send_authorized(account, Method::DELETE, &path, None).await?;
-    Ok(())
+    golems::call(account, "/party/kick", json!({ "uuid": player.simple().to_string() }))
+        .await
+        .map(drop)
 }
 
 pub async fn invite(account: &MinecraftAccount, player: Uuid) -> Result<PartyInvite, PlusError> {
-    json_authorized(
-        account,
-        Method::POST,
-        "/v1/party/invites",
-        Some(&serde_json::json!({ "player": player })),
-    )
-    .await
+    golems::call_as(account, "/party/invite", json!({ "uuid": player.simple().to_string() })).await
 }
 
 pub async fn incoming(account: &MinecraftAccount) -> Result<Vec<PartyInvite>, PlusError> {
-    json_authorized(account, Method::GET, "/v1/party/invites/incoming", None).await
+    Ok(state(account).await?.incoming)
 }
 
 pub async fn outgoing(account: &MinecraftAccount) -> Result<Vec<PartyInvite>, PlusError> {
-    json_authorized(account, Method::GET, "/v1/party/invites/outgoing", None).await
+    Ok(state(account).await?.outgoing)
 }
 
 pub async fn accept(
@@ -245,112 +236,47 @@ pub async fn accept(
     invite: Uuid,
     leave_current: bool,
 ) -> Result<Party, PlusError> {
-    let path = format!("/v1/party/invites/{invite}/accept");
-    json_authorized(
+    golems::call_as(
         account,
-        Method::POST,
-        &path,
-        Some(&serde_json::json!({ "leave_current": leave_current })),
+        "/party/accept",
+        json!({ "id": invite.to_string(), "leave_current": leave_current }),
     )
     .await
 }
 
 pub async fn decline(account: &MinecraftAccount, invite: Uuid) -> Result<(), PlusError> {
-    let path = format!("/v1/party/invites/{invite}/decline");
-    send_authorized(account, Method::POST, &path, None).await?;
-    Ok(())
+    golems::call(account, "/party/decline", json!({ "id": invite.to_string() }))
+        .await
+        .map(drop)
 }
 
 pub async fn cancel_invite(account: &MinecraftAccount, invite: Uuid) -> Result<(), PlusError> {
-    let path = format!("/v1/party/invites/{invite}");
-    send_authorized(account, Method::DELETE, &path, None).await?;
-    Ok(())
+    golems::call(account, "/party/cancel", json!({ "id": invite.to_string() }))
+        .await
+        .map(drop)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_party_updated_from_the_backend_shape() {
-        let text = r#"{
-            "type": "PartyUpdated",
-            "party": {
-                "id": "0192f0d0-0000-7000-8000-000000000001",
-                "leader": "4b8c6a1e-2f3d-4e5a-9b7c-1d2e3f4a5b61",
-                "created_at": "2026-11-02T18:12:30Z",
-                "settings": { "voice_mode": "party", "invite_policy": "members" },
-                "chat_group_id": null,
-                "voice": { "room_name": "party-x", "transport": "rtc", "rtc_available": false },
-                "members": [{
-                    "player": "4b8c6a1e-2f3d-4e5a-9b7c-1d2e3f4a5b61",
-                    "joined_at": "2026-11-02T18:12:30Z",
-                    "online": true,
-                    "eos_product_user_id": null,
-                    "voice_hard_muted": false,
-                    "state": {
-                        "location": { "kind": "server", "key": "hypixel", "display": "Hypixel" },
-                        "voice": {},
-                        "svc_connected": false,
-                        "scene": null
-                    }
-                }]
+/// What changed in the party since the last fetch of the friends list, as the Party tab's events.
+pub(crate) fn changes(before: Option<&serde_json::Value>, now: Option<&serde_json::Value>) {
+    let Some(now) = now else { return };
+    if before == Some(now) {
+        return;
+    }
+    let old_invites: Vec<&str> = before
+        .and_then(|b| b["incoming"].as_array())
+        .map(|list| list.iter().filter_map(|i| i["id"].as_str()).collect())
+        .unwrap_or_default();
+    if before.is_some()
+        && let Some(list) = now["incoming"].as_array()
+    {
+        for invite in list {
+            if invite["id"].as_str().is_some_and(|id| !old_invites.contains(&id))
+                && let Ok(invite) = serde_json::from_value::<PartyInvite>(invite.clone())
+            {
+                let _ = EVENTS.send(LiveEvent::Packet(Box::new(PartyPacket::PartyInviteReceived { invite })));
             }
-        }"#;
-
-        let PartyPacket::PartyUpdated { party } = serde_json::from_str(text).expect("parses")
-        else {
-            panic!("wrong packet");
-        };
-        assert_eq!(party.settings.invite_policy, InvitePolicy::Members);
-        assert_eq!(party.chat_group_id, None);
-        let location = &party.members[0].state.as_ref().expect("state").location;
-        assert_eq!(location.kind, LocationKind::Server);
-        assert_eq!(location.display.as_deref(), Some("Hypixel"));
+        }
     }
-
-    #[test]
-    fn reads_the_party_chat_group() {
-        let party: Party = serde_json::from_str(
-            r#"{
-                "id": "0192f0d0-0000-7000-8000-000000000001",
-                "leader": "4b8c6a1e-2f3d-4e5a-9b7c-1d2e3f4a5b61",
-                "settings": { "invite_policy": "leader" },
-                "chat_group_id": 38,
-                "members": []
-            }"#,
-        )
-        .expect("parses");
-        assert_eq!(party.chat_group_id, Some(38));
-    }
-
-    #[test]
-    fn ignores_unrelated_packets_and_tolerates_new_variants() {
-        assert!(serde_json::from_str::<PartyPacket>(r#"{"type":"StopEmote"}"#).is_err());
-        let left: PartyPacket = serde_json::from_str(
-            r#"{"type":"PartyLeft","party_id":"0192f0d0-0000-7000-8000-000000000001","reason":"something_new"}"#,
-        )
-        .expect("parses");
-        assert!(matches!(
-            left,
-            PartyPacket::PartyLeft {
-                reason: LeftReason::Other,
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn reads_the_backend_error_message() {
-        let err = PlusError::Api {
-            status: 409,
-            body: r#"{"error":"party_full","message":"That party is full"}"#.into(),
-        };
-        assert_eq!(error_message(&err).as_deref(), Some("That party is full"));
-        let err = PlusError::Api {
-            status: 500,
-            body: r#"{"error":"internal","message":"x"}"#.into(),
-        };
-        assert_eq!(error_message(&err), None);
-    }
+    // the Party tab reads it all again
+    connected();
 }

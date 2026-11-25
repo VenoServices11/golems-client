@@ -55,6 +55,7 @@ public final class DevShots {
         step("02d_after_setup", () -> MainMenu.devSetup(-1), 1500, null);
         step("03_social", () -> MainMenu.devSocial(true), 1200, null);
         step("03b_chat", () -> MainMenu.devChat(1), 1000, null);
+        step("03c_party", MainMenu::devParty, 1000, null);
         step("04_tab_toast", () -> {
             MainMenu.devSocial(false);
             MainMenu.devTab(1);
