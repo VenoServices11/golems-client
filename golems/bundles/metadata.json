@@ -8,11 +8,11 @@
         },
         {
           "path": "/golems/bundles/generated/performance-1.21.11-fabric.mrpack",
-          "sha1": "e4ff9b0c78d75d9d2b4ba7cb8b3a5c2283c49ce7"
+          "sha1": "9134b7def0a3d7e42124949d63e403403ad62674"
         },
         {
           "path": "/golems/bundles/generated/qol-1.21.11-fabric.mrpack",
-          "sha1": "56e6eb102740c709faf969341e1750d7e649108f"
+          "sha1": "2129b4a8fb491b7d8d9f7eeede915dc488b32ab7"
         },
         {
           "path": "/golems/bundles/generated/utility-1.21.11-fabric.mrpack",
